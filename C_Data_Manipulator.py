@@ -1,0 +1,192 @@
+import pandas as pd
+import h_user_input as h
+
+def processOldFormat(fileName, correctDataLine = 1, firstDataLine = 4, removeIncompleteSets = False):
+    lines = []
+    with open(fileName) as f:
+        for line in f: lines.append(line)
+    correct = lines[correctDataLine]
+    ret = []
+    data = []
+    for line in lines[firstDataLine:]:
+        currentLine = line
+        #   find first space in line
+        firstSpace = currentLine.find(" ")
+        id = currentLine[:firstSpace]
+        responseString = currentLine[firstSpace+3:]
+        # todo: confirm that removing missing values is okay.
+        if responseString.find(" ") and removeIncompleteSets:
+            print("RESPONSE REMOVED DUE TO MISSINGNESS", id)
+        else:
+            listOfGradedResponses = []
+            for i in range(len(correct)-1):
+                if responseString[i] == correct[i]:
+                    listOfGradedResponses.append(1)
+                else:
+                    listOfGradedResponses.append(0)
+            data.append([id, listOfGradedResponses])
+
+
+def processNewFileFormat(controlFile, dataFile):
+    correct = pd.read_csv(controlFile, delimiter=',', header = None)[1].tolist()
+    ids = []
+    correctLists = []
+    with open(dataFile) as f:
+        for line in f:
+            correctList = []
+            firstSpace = line.find(" ")
+            responseString = line[firstSpace + 3:]
+            id = line[:firstSpace]
+
+            for i in range(len(correct)):
+                if correct[i] == responseString[i]:
+                    correctList.append(0)
+                else:
+                    correctList.append(1)
+            ids.append(id)
+            correctLists.append(correctList)
+
+    df = pd.DataFrame(correctLists).T
+    df.to_csv('list.csv', index=False)
+    return [ids, correctList]
+
+
+def convert_new_format_to_csv(file_path, id_length = 8, index_for_start_of_responses =11):
+
+    with open(file_path+".txt") as file:
+        lines = file.readlines()
+
+    ret = "id,"
+    number_of_questions = len(lines[0])-index_for_start_of_responses-1
+    for i in range(number_of_questions):
+        ret += 'q'+str(i+1)+","
+    ret = ret[:-1]
+    ret += '\n'
+    for line in lines:
+
+        newLine = line[:id_length]+','
+        for i in range(len(line)-index_for_start_of_responses):
+            entry = line[i+index_for_start_of_responses]
+            if not entry == '\n':
+                newLine += entry + ','
+
+        ret += newLine[:-1] + '\n'
+
+    with open(file_path+".csv", "w") as file:
+        file.write(ret)
+
+def convert_new_format_to_df(filepath, id_length = 8, index_for_start_of_responses =11):
+    #   create csv
+    convert_new_format_to_csv(filepath,  id_length, index_for_start_of_responses)
+    #   create data frame from csv
+    df = pd.DataFrame(pd.read_csv(filepath+".csv"))
+    #   return data frame
+    return df
+
+df = convert_new_format_to_df("t")
+print(df)
+def convert_lines_to_csv(lines, file_path):
+    with open(file_path, "w") as file:
+        file.writelines(lines)
+
+
+def get_lines_from_X_to_Y_from_file(file_path, x, y):
+    with open(file_path) as file:
+        lines = file.readlines()
+    if y > len(lines):
+        print("Y in get lines from X to Y from File is greater than length of file.")
+    ret = []
+    work = lines[x:y]
+    for line in work:
+        ret.append(line)
+    return ret
+
+
+def getNextBlankLineAfterIndex(file_path, index):
+    with open(file_path) as file:
+        lines = file.readlines()
+        count = 0
+        for line in lines:
+            if line == "\n":
+                if count > index:
+                    return count
+            count += 1
+        return False
+
+
+def get_rows_of_data_frame_from_list_of_ids(df, list_of_ids, id_column_name = "Item ID"):
+    criterion = lambda row: row[id_column_name] in list_of_ids
+    ret = df[df.apply(criterion, axis=1)]
+    return ret
+
+
+def get_top_n_as_csv(csv_file_path, n, column_name, first_line=34):
+    #   chop up csv to isolate table
+    file_pathToTopCSV = csv_file_path + "_top_" + str(n) + "_" + column_name
+    blankLine = getNextBlankLineAfterIndex(csv_file_path, first_line - 1)
+    choppedLines = get_lines_from_X_to_Y_from_file(csv_file_path, first_line - 1, blankLine)
+    #   convert data to csv file
+    convert_lines_to_csv(choppedLines, file_pathToTopCSV)
+    #   convert data to pandas df
+    df = pd.DataFrame(pd.read_csv(file_pathToTopCSV))
+    #   sort dataFrame
+    df = df.sort_values(by=column_name, ascending=False)
+    #   select top n
+    topN = df.head(n)
+    #   create csv
+    topN.to_csv(file_pathToTopCSV)
+    return topN
+
+
+def create_smaller_test_from_highly_discriminatory_questions(p_score_file ="", n = 20, target_var = "S-Rpbis"):
+    #   establish the high scoring items
+    df = get_top_n_as_csv("a.csv", 20, "S-Rpbis")
+
+    #   get the relevant ids
+    a = df['Sequence']
+    a_list = []
+    a_list.append("id")
+    for item in a.to_list():
+        a_list.append('q'+str(item))
+
+
+    #   get data frame of all answers
+    all_answers = convert_new_format_to_df("t")
+    selected_data = all_answers[a_list]
+    selected_data.to_csv("test.csv")
+    #   select responses to just those questions from test taker data
+
+    #   test_taker_data_frame = pd.DataFrame(pd.read_csv('a.csv'))
+
+#    responses = get_rows_of_data_frame_from_list_of_ids(test_taker_data_frame,ids)
+    #   create relevant files for IRT testing
+    print("hello")
+
+
+def subset():
+    print("subset selected")
+    filePath = input("read file?")
+    #   read the file and spit out the columns as options...
+    #   will pause on this pursuit for the time being.
+
+    column = input("what column would you like to select?")
+    n = h.getInt("how many rows would you like", 1000)
+
+
+class DataManipulator:
+    def __init__(self):
+        self._cont = True
+
+    def receive_direction(self):
+        self._cont = True
+        possibleChoices = ["Create Subset for Top n for column"]
+        functions_for_choices = [subset]
+        choice = h.select_from_list("What would you like to do?", possibleChoices)
+        function = functions_for_choices[choice]
+        function()
+
+        # eventually there will be more choices
+
+
+d = DataManipulator()
+create_smaller_test_from_highly_discriminatory_questions()
