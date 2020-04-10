@@ -1,7 +1,46 @@
 import pandas as pd
 import h_user_input as h
 
-def processOldFormat(fileName, correctDataLine = 1, firstDataLine = 4, removeIncompleteSets = False):
+
+def get_stem(name_with_extension):
+    i = name_with_extension.index('.')
+    return name_with_extension[:i]
+
+def drop_first_item_from_csv(fileName):
+    lines = []
+    ret = []
+    with open(fileName) as f:
+        for line in f: lines.append(line)
+    for line in lines:
+        index_of_first_comma = line.index(',')
+        line = line[index_of_first_comma+1:]
+        ret.append(line)
+    with open(fileName, 'w') as f:
+        f.writelines(ret)
+
+def restore_id_integrity(file_name, id_length):
+    #   open file
+    ret = []
+    with open(file_name) as f:
+        first = True
+        for line in f:
+            if first:
+                first = False
+            else:
+                newLine = ""
+            #   find first comma
+                i = line.index(',')
+            #   calculate number of zeroes needed
+                zeroes = id_length-i
+            #   add zeroes
+                for z in range(zeroes):
+                    newLine += '0'
+                newLine += line
+                ret.append(newLine)
+    write_lines_to_text(ret, file_name)
+
+
+def processOldFormat(fileName, correctDataLine=1, firstDataLine=4, removeIncompleteSets=False):
     lines = []
     with open(fileName) as f:
         for line in f: lines.append(line)
@@ -13,13 +52,13 @@ def processOldFormat(fileName, correctDataLine = 1, firstDataLine = 4, removeInc
         #   find first space in line
         firstSpace = currentLine.find(" ")
         id = currentLine[:firstSpace]
-        responseString = currentLine[firstSpace+3:]
+        responseString = currentLine[firstSpace + 3:]
         # todo: confirm that removing missing values is okay.
         if responseString.find(" ") and removeIncompleteSets:
             print("RESPONSE REMOVED DUE TO MISSINGNESS", id)
         else:
             listOfGradedResponses = []
-            for i in range(len(correct)-1):
+            for i in range(len(correct) - 1):
                 if responseString[i] == correct[i]:
                     listOfGradedResponses.append(1)
                 else:
@@ -28,7 +67,7 @@ def processOldFormat(fileName, correctDataLine = 1, firstDataLine = 4, removeInc
 
 
 def processNewFileFormat(controlFile, dataFile):
-    correct = pd.read_csv(controlFile, delimiter=',', header = None)[1].tolist()
+    correct = pd.read_csv(controlFile, delimiter=',', header=None)[1].tolist()
     ids = []
     correctLists = []
     with open(dataFile) as f:
@@ -46,46 +85,67 @@ def processNewFileFormat(controlFile, dataFile):
             ids.append(id)
             correctLists.append(correctList)
 
-    df = pd.DataFrame(correctLists).T
+    df = pd.DataFrame(correctLists, index=None).T
     df.to_csv('list.csv', index=False)
     return [ids, correctList]
 
 
-def convert_new_format_to_csv(file_path, id_length = 8, index_for_start_of_responses =11):
-
-    with open(file_path+".txt") as file:
+def convert_new_format_to_csv(file_path, id_length=8, index_for_start_of_responses=11):
+    stem = get_stem(file_path)
+    with open(file_path) as file:
         lines = file.readlines()
 
     ret = "id,"
-    number_of_questions = len(lines[0])-index_for_start_of_responses-1
+    number_of_questions = len(lines[0]) - index_for_start_of_responses - 1
     for i in range(number_of_questions):
-        ret += 'q'+str(i+1)+","
+        ret += 'q' + str(i + 1) + ","
     ret = ret[:-1]
     ret += '\n'
     for line in lines:
 
-        newLine = line[:id_length]+','
-        for i in range(len(line)-index_for_start_of_responses):
-            entry = line[i+index_for_start_of_responses]
+        newLine = line[:id_length] + ','
+        for i in range(len(line) - index_for_start_of_responses):
+            entry = line[i + index_for_start_of_responses]
             if not entry == '\n':
                 newLine += entry + ','
 
         ret += newLine[:-1] + '\n'
 
-    with open(file_path+".csv", "w") as file:
+    with open(stem + ".csv", "w") as file:
         file.write(ret)
 
-def convert_new_format_to_df(filepath, id_length = 8, index_for_start_of_responses =11):
+
+def convert_csv_to_new_format(file_path, id_length=8, index_for_start_of_responses = 11):
+    with open(file_path) as f:
+        first = True
+        ret = []
+        for line in f.readlines():
+            if first:
+                first = False
+            else:
+                first_comma = line.index(',')
+                id = line[:first_comma]
+                new_line = id + "   "
+
+                remainder = line[first_comma:]
+                for i in remainder:
+                    if not i == ',':
+                        new_line += i
+                ret.append(new_line)
+        name = get_stem(file_path)
+        write_lines_to_text(ret,name+".txt")
+def convert_new_format_to_df(filepath, id_length=8, index_for_start_of_responses=11):
     #   create csv
-    convert_new_format_to_csv(filepath,  id_length, index_for_start_of_responses)
+    convert_new_format_to_csv(filepath, id_length, index_for_start_of_responses)
     #   create data frame from csv
-    df = pd.DataFrame(pd.read_csv(filepath+".csv"))
+    name = get_stem(filepath)
+    df = pd.DataFrame(pd.read_csv(name + ".csv"), index=None)
     #   return data frame
     return df
 
-df = convert_new_format_to_df("t")
-print(df)
-def convert_lines_to_csv(lines, file_path):
+
+def write_lines_to_text(lines, file_path):
+    #   todo: consider removal or consistent implementation
     with open(file_path, "w") as file:
         file.writelines(lines)
 
@@ -114,7 +174,7 @@ def getNextBlankLineAfterIndex(file_path, index):
         return False
 
 
-def get_rows_of_data_frame_from_list_of_ids(df, list_of_ids, id_column_name = "Item ID"):
+def get_rows_of_data_frame_from_list_of_ids(df, list_of_ids, id_column_name="Item ID"):
     criterion = lambda row: row[id_column_name] in list_of_ids
     ret = df[df.apply(criterion, axis=1)]
     return ret
@@ -126,9 +186,9 @@ def get_top_n_as_csv(csv_file_path, n, column_name, first_line=34):
     blankLine = getNextBlankLineAfterIndex(csv_file_path, first_line - 1)
     choppedLines = get_lines_from_X_to_Y_from_file(csv_file_path, first_line - 1, blankLine)
     #   convert data to csv file
-    convert_lines_to_csv(choppedLines, file_pathToTopCSV)
+    write_lines_to_text(choppedLines, file_pathToTopCSV)
     #   convert data to pandas df
-    df = pd.DataFrame(pd.read_csv(file_pathToTopCSV))
+    df = pd.DataFrame(pd.read_csv(file_pathToTopCSV), index=None)
     #   sort dataFrame
     df = df.sort_values(by=column_name, ascending=False)
     #   select top n
@@ -138,29 +198,24 @@ def get_top_n_as_csv(csv_file_path, n, column_name, first_line=34):
     return topN
 
 
-def create_smaller_test_from_highly_discriminatory_questions(p_score_file ="", n = 20, target_var = "S-Rpbis"):
+def create_smaller_test_from_highly_discriminatory_questions(p_data, p_score_file, n=20, target_var='S-Rpbis'):
     #   establish the high scoring items
-    df = get_top_n_as_csv("a.csv", 20, "S-Rpbis")
-
-    #   get the relevant ids
+    df = get_top_n_as_csv(p_score_file, n, target_var)
+    #   get the relevant question ids
     a = df['Sequence']
-    a_list = []
-    a_list.append("id")
+    a_list = ["id"]
     for item in a.to_list():
-        a_list.append('q'+str(item))
-
+        a_list.append('q' + str(item))
 
     #   get data frame of all answers
-    all_answers = convert_new_format_to_df("t")
-    selected_data = all_answers[a_list]
-    selected_data.to_csv("test.csv")
+    all_answers = convert_new_format_to_df(p_data)
     #   select responses to just those questions from test taker data
-
-    #   test_taker_data_frame = pd.DataFrame(pd.read_csv('a.csv'))
-
-#    responses = get_rows_of_data_frame_from_list_of_ids(test_taker_data_frame,ids)
+    selected_data = all_answers[a_list]
     #   create relevant files for IRT testing
-    print("hello")
+    name = get_stem(p_data)
+    selected_data_file_name = name + "_top_"+str(n)+".csv"
+    selected_data.to_csv(selected_data_file_name)
+    drop_first_item_from_csv(selected_data_file_name)
 
 
 def subset():
@@ -189,4 +244,8 @@ class DataManipulator:
 
 
 d = DataManipulator()
-create_smaller_test_from_highly_discriminatory_questions()
+create_smaller_test_from_highly_discriminatory_questions('t.txt', 'a.csv')
+restore_id_integrity("t_top_20.csv", 8)
+convert_csv_to_new_format("t_top_20.csv")
+
+#need to make control for selected questions
