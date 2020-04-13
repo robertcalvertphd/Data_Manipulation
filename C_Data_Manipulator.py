@@ -6,6 +6,7 @@ def get_stem(name_with_extension):
     i = name_with_extension.index('.')
     return name_with_extension[:i]
 
+
 def drop_first_item_from_csv(fileName):
     lines = []
     ret = []
@@ -13,10 +14,11 @@ def drop_first_item_from_csv(fileName):
         for line in f: lines.append(line)
     for line in lines:
         index_of_first_comma = line.index(',')
-        line = line[index_of_first_comma+1:]
+        line = line[index_of_first_comma + 1:]
         ret.append(line)
     with open(fileName, 'w') as f:
         f.writelines(ret)
+
 
 def restore_id_integrity(file_name, id_length):
     #   open file
@@ -28,11 +30,11 @@ def restore_id_integrity(file_name, id_length):
                 first = False
             else:
                 newLine = ""
-            #   find first comma
+                #   find first comma
                 i = line.index(',')
-            #   calculate number of zeroes needed
-                zeroes = id_length-i
-            #   add zeroes
+                #   calculate number of zeroes needed
+                zeroes = id_length - i
+                #   add zeroes
                 for z in range(zeroes):
                     newLine += '0'
                 newLine += line
@@ -115,7 +117,7 @@ def convert_new_format_to_csv(file_path, id_length=8, index_for_start_of_respons
         file.write(ret)
 
 
-def convert_csv_to_new_format(file_path, id_length=8, index_for_start_of_responses = 11):
+def convert_csv_to_new_format(file_path, id_length=8, index_for_start_of_responses=11):
     with open(file_path) as f:
         first = True
         ret = []
@@ -133,7 +135,9 @@ def convert_csv_to_new_format(file_path, id_length=8, index_for_start_of_respons
                         new_line += i
                 ret.append(new_line)
         name = get_stem(file_path)
-        write_lines_to_text(ret,name+".txt")
+        write_lines_to_text(ret, name + ".txt")
+
+
 def convert_new_format_to_df(filepath, id_length=8, index_for_start_of_responses=11):
     #   create csv
     convert_new_format_to_csv(filepath, id_length, index_for_start_of_responses)
@@ -182,7 +186,8 @@ def get_rows_of_data_frame_from_list_of_ids(df, list_of_ids, id_column_name="Ite
 
 def get_top_n_as_csv(csv_file_path, n, column_name, first_line=34):
     #   chop up csv to isolate table
-    file_pathToTopCSV = csv_file_path + "_top_" + str(n) + "_" + column_name
+
+    file_pathToTopCSV = get_stem(csv_file_path) + "_top_" + str(n) + "_" + column_name + ".csv"
     blankLine = getNextBlankLineAfterIndex(csv_file_path, first_line - 1)
     choppedLines = get_lines_from_X_to_Y_from_file(csv_file_path, first_line - 1, blankLine)
     #   convert data to csv file
@@ -198,7 +203,9 @@ def get_top_n_as_csv(csv_file_path, n, column_name, first_line=34):
     return topN
 
 
-def create_smaller_test_from_highly_discriminatory_questions(p_data, p_score_file, n=20, target_var='S-Rpbis'):
+def create_test_from_highly_discriminatory_questions(p_data, p_control, p_score_file, n=20, target_var='S-Rpbis'):
+
+    original_data = convert_new_format_to_df(p_data)
     #   establish the high scoring items
     df = get_top_n_as_csv(p_score_file, n, target_var)
     #   get the relevant question ids
@@ -211,11 +218,32 @@ def create_smaller_test_from_highly_discriminatory_questions(p_data, p_score_fil
     all_answers = convert_new_format_to_df(p_data)
     #   select responses to just those questions from test taker data
     selected_data = all_answers[a_list]
+    #   read lines from control file and write those that were selected
+    #   create control file for top 20
+    control_lines = []
+    with open(p_control) as f:
+        lines = []
+        for line in f.readlines():
+            lines.append(line)
+    for item in a:
+        control_lines.append(lines[item-1])
+    name_of_control_file = get_stem(p_control) + "_" + "select_top_" + str(n) + "_for_" + target_var + ".csv"
+    write_lines_to_text(control_lines,name_of_control_file)
+
+    '''
+    for line in f.readlines():
+        count += 1
+        if a_list.__contains__('q' + str(count)):
+            control_strings.append(line)
+    '''
+
     #   create relevant files for IRT testing
     name = get_stem(p_data)
-    selected_data_file_name = name + "_top_"+str(n)+".csv"
+    selected_data_file_name = name + "_top_" + str(n) + ".csv"
     selected_data.to_csv(selected_data_file_name)
     drop_first_item_from_csv(selected_data_file_name)
+    restore_id_integrity(selected_data_file_name, 8)
+    convert_csv_to_new_format(selected_data_file_name)
 
 
 def subset():
@@ -244,8 +272,6 @@ class DataManipulator:
 
 
 d = DataManipulator()
-create_smaller_test_from_highly_discriminatory_questions('t.txt', 'a.csv')
-restore_id_integrity("t_top_20.csv", 8)
-convert_csv_to_new_format("t_top_20.csv")
+create_test_from_highly_discriminatory_questions("d2.txt", "c2.csv", "pt_s.csv", n = 50)
 
-#need to make control for selected questions
+# need to make control for selected questions
