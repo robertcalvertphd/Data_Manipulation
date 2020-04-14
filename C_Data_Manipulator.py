@@ -42,30 +42,7 @@ def restore_id_integrity(file_name, id_length):
     write_lines_to_text(ret, file_name)
 
 
-def processOldFormat(fileName, correctDataLine=1, firstDataLine=4, removeIncompleteSets=False):
-    lines = []
-    with open(fileName) as f:
-        for line in f: lines.append(line)
-    correct = lines[correctDataLine]
-    ret = []
-    data = []
-    for line in lines[firstDataLine:]:
-        currentLine = line
-        #   find first space in line
-        firstSpace = currentLine.find(" ")
-        id = currentLine[:firstSpace]
-        responseString = currentLine[firstSpace + 3:]
-        # todo: confirm that removing missing values is okay.
-        if responseString.find(" ") and removeIncompleteSets:
-            print("RESPONSE REMOVED DUE TO MISSINGNESS", id)
-        else:
-            listOfGradedResponses = []
-            for i in range(len(correct) - 1):
-                if responseString[i] == correct[i]:
-                    listOfGradedResponses.append(1)
-                else:
-                    listOfGradedResponses.append(0)
-            data.append([id, listOfGradedResponses])
+
 
 
 def processNewFileFormat(controlFile, dataFile):
