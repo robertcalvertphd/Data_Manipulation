@@ -142,7 +142,7 @@ def update_control_files_with_item_bank_key(path_to_item_bank_csv, path_to_contr
             for i in testSeq:
                 if control_df[0].__contains__(i):
                   value = form_relevant[form_relevant["testSeq"] == i]["AccNum"]
-            
+
             control_df[0] = np.where(control_df[0] == i, value, control_df[0])
             control_df.to_csv(file_path, index = False)
             remove_first_line_of_csv(file_path)
