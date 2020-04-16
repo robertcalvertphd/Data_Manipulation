@@ -245,7 +245,6 @@ class DataManipulator:
         function = functions_for_choices[choice]
         function()
 
-        # eventually there will be more choices
 
 
 d = DataManipulator()
