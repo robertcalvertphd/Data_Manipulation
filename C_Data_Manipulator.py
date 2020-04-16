@@ -245,7 +245,7 @@ class DataManipulator:
         function = functions_for_choices[choice]
         function()
 
-
+#test commit
 
 d = DataManipulator()
 create_test_from_highly_discriminatory_questions("d2.txt", "c2.csv", "pt_s.csv", n = 50)
