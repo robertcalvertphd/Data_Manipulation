@@ -64,7 +64,7 @@ def processNewFileFormat(controlFile, dataFile):
             ids.append(id)
             correctLists.append(correctList)
 
-    df = pd.DataFrame(correctLists, index=None).T
+    df = pd.DataFrame(correctLists, index=None)
     df.to_csv('list.csv', index=False)
     return [ids, correctList]
 
@@ -248,6 +248,6 @@ class DataManipulator:
 #test commit
 
 d = DataManipulator()
-create_test_from_highly_discriminatory_questions("d2.txt", "c2.csv", "pt_s.csv", n = 50)
+create_test_from_highly_discriminatory_questions("data_files/pt1_16.txt", "data_files/pt1_16.csv", "data_files/pt1_16s.csv", n = 50)
 
 # need to make control for selected questions
