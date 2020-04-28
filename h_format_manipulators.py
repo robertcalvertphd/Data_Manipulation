@@ -2,6 +2,28 @@ import os
 import pandas as pd
 import numpy as np
 
+def get_next_blank_line_after_index(file_path, index):
+    with open(file_path) as file:
+        lines = file.readlines()
+        count = 0
+        for line in lines:
+            if line == "\n":
+                if count > index:
+                    return count
+            count += 1
+        return False
+
+
+def get_lines_from_X_to_Y_from_file(file_path, x, y):
+    with open(file_path) as file:
+        lines = file.readlines()
+    if y > len(lines):
+        print("Y in get lines from X to Y from File is greater than length of file.")
+    ret = []
+    work = lines[x:y]
+    for line in work:
+        ret.append(line)
+    return ret
 
 def get_all_files_in_directory_and_sub_directories_starting_with_stem(directory_path, stem):
     pass
@@ -14,10 +36,12 @@ def get_lines(file_name):  # candidate for general helper file
         for line in f: lines.append(line)
     return lines
 
-def get_df(path_to_csv, header = None, index = None):
-    return pd.DataFrame(pd.read_csv(path_to_csv, header = header), index = index)
-def write_lines_to_text(lines, file_path):  # candidate for general helper file
-    with open(file_path, "w") as file:
+def get_df(path_to_csv, header = None, index = None, dtype = object):
+    return pd.DataFrame(pd.read_csv(path_to_csv, header = header, dtype=dtype), index = index)
+
+
+def write_lines_to_text(lines, file_path, mode = 'w'):  # candidate for general helper file
+    with open(file_path, mode) as file:
         file.writelines(lines)
 
 
@@ -29,12 +53,12 @@ def remove_first_line_of_csv(file_path):
 def get_stem(name_with_extension):  # candidate for general helper file
     try:
         i = name_with_extension.index('.')
+        s = name_with_extension.rfind('/')
+        if s == -1: s = 0
+        ret = name_with_extension[s + 1:i]
+        return ret
     except:
-        print("er")
-    s = name_with_extension.rfind('/')
-    if s == -1: s = 0
-    ret = name_with_extension[s+1:i]
-    return ret
+        return name_with_extension
 
 
 def get_extension(name_with_extension):
@@ -177,6 +201,14 @@ def convert_first_line_answers_to_default_control_and_data(file_name, cutoff_for
     write_lines_to_text(formatted, name + "_formatted.txt")
 
 
+def get_all_folders_in_folder(folder_path):
+    list = os.listdir(folder_path)
+    ret = []
+    for item in list:
+        if get_stem(item) == item:
+            ret.append(folder_path + "/"+item)
+    return ret
+
 def get_all_files_names_in_folder(folder_path, extension = False, target_string = False):
     list = os.listdir(folder_path)
     ret = []
@@ -188,12 +220,29 @@ def get_all_files_names_in_folder(folder_path, extension = False, target_string 
     elif target_string:
         for item in list:
             f = item.find(target_string)
-            if f>0:
+            if f>0 :
                 ret.append(folder_path + "/" + item)
     else:
         for item in list:
             ret.append(folder_path + "/" + item)
     return ret
+
+def get_all_file_names_in_folder_and_sub_folders(folder_path):
+    #   get all subfolders
+    # todo: doesn't work currently
+
+    folders = [folder_path]
+    cont = True
+    while cont:
+        for folder in folders:
+            count = 0
+            s = get_all_folders_in_folder(folder_path+"/"+folder)
+            for f in s:
+                folders.append(f)
+                count += 1
+            if count == 0:
+                cont = False
+    return folders
 
 
 def create_control_files(file_path, destination_path = ""):
@@ -201,7 +250,7 @@ def create_control_files(file_path, destination_path = ""):
     data = get_all_files_names_in_folder(file_path, "txt")
     control = get_all_files_names_in_folder(file_path, "csv")
     for d in data:
-        control_name = file_path + get_stem(d)+"__c.csv"
+        control_name = file_path + get_stem(d)+"_c.csv"
         if not control.__contains__(control_name):
             convertOldFormatToNew(d, destination_path)
             #todo: add logic here to determine what type of original file we have and al
@@ -269,16 +318,11 @@ def process_karen_data(path_to_data, destination_path):
 
     #   replace control file ids with item bank ids
     item_bank_ids = get_all_files_names_in_folder(destination_path, target_string="_L")
-    # todo: sloppy solution
-    for item_bank in item_bank_ids:
-        for file in data_files:
-            name = get_stem(file)[:11]
-            control_name = name + "FullAdmin_c.csv"
-            control_path = destination_path + control_name
-            merge_control_and_bank_info(control_path, item_bank)
-        # create df from control file
-        # create df from item_bank
-        # set control_file_id to item_bank id.
+
+    for file in data_files:
+        matching_control_name = destination_path + get_stem(file) + "_c.csv"
+        matching_item_bank_name = destination_path + get_stem(file)[:11]+"Test_L.csv"
+        merge_control_and_bank_info(matching_control_name, matching_item_bank_name)
 
     #   ?? delete the bank ID files ?? not sure they are needed after this step
 def merge_control_and_bank_info(control_path, bank_path, control_id_col = 0, bank_control_col = 4):
@@ -288,15 +332,15 @@ def merge_control_and_bank_info(control_path, bank_path, control_id_col = 0, ban
     control_df.to_csv(control_path, header = None, index = False)
 
 
-process_karen_data("LCEA_data/", "LCEA_data/processing/")
+process_karen_data("LCEE_data", "LCEE_data/processed_data/")
 
 #merge_control_and_bank_info(a,b)
 #path_to_files = "data_files"
-#convertOldFormatToNew("LCEA_data/lcea1_18.txt")
-#processNewFileFormat("LCEA_data/lcea1_18c.csv","LCEA_data/lcea1_18.txt")
+#convertOldFormatToNew("LCEE_data/lcea1_18.txt")
+#processNewFileFormat("LCEE_data/lcea1_18c.csv","LCEE_data/lcea1_18.txt")
 #convert_first_line_answers_to_default_control_and_data(path_to_files+"/pt1_16_n.txt")
 #create_control_files(path_to_files)
 #update_control_files_with_item_bank_key("data_files/item_map.csv", "data_files")
 #convert_2016_format("data_files/pt3_16.txt")
-#create_mapping_from_Karen_test_data("LCEA_data/LCLE_Q.txt", True)
+#create_mapping_from_Karen_test_data("LCEE_data/LCLE_Q.txt", True)
 
