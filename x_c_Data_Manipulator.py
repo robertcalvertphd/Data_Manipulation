@@ -41,10 +41,6 @@ def restore_id_integrity(file_name, id_length):
                 ret.append(newLine)
     write_lines_to_text(ret, file_name)
 
-
-
-
-
 def processNewFileFormat(controlFile, dataFile):
     correct = pd.read_csv(controlFile, delimiter=',', header=None)[1].tolist()
     ids = []
@@ -180,7 +176,7 @@ def get_top_n_as_csv(csv_file_path, n, column_name, first_line=34):
     return topN
 
 
-def create_test_from_highly_discriminatory_questions(p_data, p_control, p_score_file, n=20, target_var='S-Rpbis'):
+def create_test_from_highly_discriminatory_questions(p_data, p_control, p_score_file, n=20, target_var='T-Rpbis'):
 
     original_data = convert_new_format_to_df(p_data)
     #   establish the high scoring items
@@ -248,6 +244,6 @@ class DataManipulator:
 #test commit
 
 d = DataManipulator()
-create_test_from_highly_discriminatory_questions("data_files/pt1_16.txt", "data_files/pt1_16.csv", "data_files/pt1_16s.csv", n = 50)
+#create_test_from_highly_discriminatory_questions("data_files/pt1_16.txt", "data_files/pt1_16.csv", "data_files/pt1_16s.csv", n = 50)
 
 # need to make control for selected questions
