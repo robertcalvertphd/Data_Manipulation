@@ -31,8 +31,8 @@ def convertIteman(path_to_data, processed_data_path):
     for file in files:
         h.convert_iteman_format(file, processed_data_path)
 
-path_to_data = "LPCC/data"
-processed_data_path = "LPCC/processed_data"
+path_to_data = "LPCC_IRT/data"
+processed_data_path = "LPCC_IRT/processed_data"
 control_files = get_control_files(path_to_data,processed_data_path,"Control")
 get_data_files(path_to_data, processed_data_path, control_files=control_files)
 #convertIteman(path_to_data, processed_data_path)
