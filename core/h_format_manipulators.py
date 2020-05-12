@@ -1,6 +1,11 @@
-import h_file_handling as hfh
+import core.h_file_handling as hfh
 pd = hfh.pd
 np = hfh.np
+
+#   todo: ensure that all helpers throw errors when invalid arguments are passed to them
+#   todo: institute a return True without error and a check for True
+
+
 def convert_iteman_format(file_name, destination_path ="", create_csv = True, pretest_cutoff = False):
     #   old format is of style
     #   gibberish first line
@@ -8,10 +13,9 @@ def convert_iteman_format(file_name, destination_path ="", create_csv = True, pr
     #   number of options
     #   included
     #   start response entries
-
-
     old = hfh.get_lines(file_name)
-    #   check if first line is omitted (it is sometimes in Karen data
+
+    #   check if first line is omitted
     if old:
         adjust = 0
         if len(old[0]) < len(old[1]):
@@ -19,12 +23,13 @@ def convert_iteman_format(file_name, destination_path ="", create_csv = True, pr
             adjust = 1
         correct = old[adjust]
         if len(correct) < 10:
-            #todo: sloppy need better checking of file types
             return False
+
         number_of_possible_responses = old[1+adjust]
         included = old[2+adjust]
         control = []
         i = -1
+
         for answer in correct:
             if not answer == '\n' and not answer == ' ':
                 i += 1
@@ -38,12 +43,13 @@ def convert_iteman_format(file_name, destination_path ="", create_csv = True, pr
                 #line = str(i + 1) + "," + answer + "," + str(n) + ",1," + inc + ",M \n"
                 if pretest_cutoff:
                     if inc == 'Y' and pretest_cutoff:
-                        line = [str(i+1), answer, str(n), '1', inc, 'M']
+                        if i > pretest_cutoff:
+                            line = [str(i+1), answer, str(n), '1', 'N', 'M']
+                        else: line = [str(i + 1), answer, str(n), '1', 'Y', 'M']
                         control.append(line)
                 else:
                     line = [str(i + 1), answer, str(n), '1', inc, 'M']
                     control.append(line)
-            #control = control[:-1]
 
         df = pd.DataFrame(control, index=None)
 
@@ -57,6 +63,7 @@ def convert_iteman_format(file_name, destination_path ="", create_csv = True, pr
             return True
         return False
     print("fed invalid file to convert to iteman", file_name)
+
 
 def convert_folder_from_iteman_format(folder_path, destination_path ="", pretest_cutoff = False):
     files = hfh.get_all_file_names_in_folder(folder_path, extension='txt')
@@ -229,12 +236,22 @@ def create_L_files_from_item_bank_master(file, destination_path, test_form_col_n
         name = hfh.create_name(form,destination_path,'.csv', '_L')
         form_df.to_csv(name, index = False, header = 0)
 
+
 def merge_control_and_bank_info(control_path, bank_path):
     control_df = hfh.get_df( control_path, header=0)
     bank_df = hfh.get_df(bank_path, header = 0)
-    new = pd.merge(control_df, bank_df, on='sequence', how='right')
-    new = new[['bank_id', 'key','number_of_options','group','include','scoring_option']]
-    new.to_csv(control_path, header=None, index = False)
+    # check that id is not already merged
+    sequence_value = control_df['sequence'][1]
+    if not sequence_value == str(2):
+        print(control_path, "expected sequence = 2 got", sequence_value+", file was not merged. Check for repairs.")
+        valid = is_valid_control(control_path)
+        if valid: print(control_path + " is a valid control file.")
+
+    else:
+        new = pd.merge(control_df, bank_df, on='sequence', how='right')
+        new = new[['bank_id', 'key','number_of_options','group','include','scoring_option']]
+        new.to_csv(control_path, header=None, index = False)
+
 
 def convert_xCalibre_matrix_for_PCI(matrix_file, corresponding_control_file = False, id_length = 8):
     ret = []
@@ -278,6 +295,98 @@ def is_valid_data(file):
     return 1
 
 
+def remove_header_and_blank_lines(control_path):
+    lines = hfh.get_lines(control_path)
+    ret = []
+    for line in lines:
+        remove = False
+        if line == '\n':
+            remove = True
+        split_line = line.split(',')
+        if len(split_line)>2:
+            a = split_line[2]
+            if not split_line[2].isnumeric():
+                remove = True
+        if not remove:
+            ret.append(line)
+    hfh.write_lines_to_text(ret, control_path)
+
+
+def convert_delimited_control(control_file, destination_path, delimiter = '\t', remove_version = False, remove_header = True):
+    lines = hfh.get_lines(control_file)
+    ret = []
+    changed = False
+    if len(lines)>1:
+        if remove_header:
+            lines = lines[1:]
+        for line in lines:
+            # check for delimiter
+            split_line = line.split(delimiter)
+            if len(split_line)> 1:
+                changed = True
+                ret_line = split_line[0] + ","
+                if remove_version:
+                    version_location = ret_line.rfind('V')
+                    if version_location > 0:
+                        ret_line = ret_line[:version_location]+','
+                for i in split_line[1:]:
+                    ret_line += i + ','
+                ret_line=ret_line[:-1]
+                ret.append(ret_line)
+            else:
+                # check to see if file is comma delimited
+                split_line = line.split(',')
+                # if comma delimited and removing version get bank id and remove version
+                if len(split_line)>1 and remove_version:
+                    ret_line = split_line[0]
+                    version_location = ret_line.rfind('V')
+                    if version_location > 0:
+                        ret_line = ret_line[:version_location] + ','
+                        for i in split_line[1:]:
+                            ret_line += i + ','
+                        ret_line = ret_line[:-1]
+                        ret.append(ret_line)
+                        print("Comma delimited identified. ID_BANK version identifier removed" )
+                else:
+                    ret.append(line)
+
+        if not changed:
+            print(control_file + " asked to be delimiter converted but did not contain target delimiter")
+
+        hfh.write_lines_to_text(ret, destination_path+'/'+hfh.get_stem(control_file))
+        return True
+    else:
+        print(control_file, " is an empty file and asked to be converted")
+        return False
+
+
+
+def is_valid_control(file):
+    lines = hfh.get_lines(file)
+    valid = True
+    for line in lines:
+        valid = False
+        # check for header line and remove
+        split_line = line.split(',')
+        if not len(split_line) == 4:
+            valid = False
+        else:
+            if len(split_line)>2:
+                if not split_line[2].isnumeric():
+                    valid = False
+            # check for empty line and remove
+            if len(split_line) == 0:
+                valid = False
+            # check for bank id
+            if len(split_line[0])<4:
+                valid = True
+            # check for entries in four points
+
+    if not valid: print("invalid control file attempting repair", file)
+    remove_header_and_blank_lines(file)
+    return valid
+
+
 def fix_format_of_data_file(file, destination):
     valid = is_valid_data(file)
     if valid:
@@ -299,6 +408,7 @@ def add_header_to_csvs(path_to_files, header, target_string):
             data = original.read()
         if not data[0] == header:
             with open(file, 'w') as modified: modified.write(header+'\n' + data)
+
 
 def set_standard_id_length_in_data_files(path_to_files,target_length, spaces_between_id_and_data = 3):
     #assumes data has spaces

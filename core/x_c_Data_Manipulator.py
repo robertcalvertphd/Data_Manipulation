@@ -1,5 +1,5 @@
 import pandas as pd
-import h_user_input as h
+import core.h_user_input as h
 
 
 def get_stem(name_with_extension):

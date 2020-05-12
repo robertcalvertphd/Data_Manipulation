@@ -4,14 +4,20 @@ import pandas as pd
 import numpy as np
 
 
-def copy_file_and_write_to_destination(file, destination, modified_name = False):
+def copy_file_and_write_to_destination(file, destination, modified_name = False, new_extension = False):
     lines = get_lines(file)
-    extension = "." + get_extension(file)
-    name = destination + get_stem(file) + extension
-    if modified_name:
-        name = destination + "/" + modified_name
-    write_lines_to_text(lines, name)
-
+    if lines:
+        if new_extension:
+            extension = new_extension
+        else:
+            extension = "." + get_extension(file)
+        name = destination +"/" + get_stem(file) + extension
+        if modified_name:
+            name = destination + "/" + modified_name
+        write_lines_to_text(lines, name)
+    else:
+        print("invalid copy. no lines present in file" + file)
+        return False
 
 def purge_invalid_extensions(files, list_of_valid_extensions):
     ret = []
@@ -42,7 +48,7 @@ def get_all_file_names_in_folder(folder_path, extension = False, target_string =
     elif target_string:
         for item in list:
             f = item.find(target_string)
-            if f>0 :
+            if f>-1 :
                 ret.append(folder_path + "/" + item)
     else:
         for item in list:
@@ -50,7 +56,7 @@ def get_all_file_names_in_folder(folder_path, extension = False, target_string =
     return ret
 
 
-def get_all_files(path_to_data, target_string):
+def get_all_files(path_to_data, target_string = None):
     folders = get_all_folders_in_folder(path_to_data)
     folders.append(path_to_data)
     data_files = []
@@ -64,20 +70,6 @@ def get_all_files(path_to_data, target_string):
             data_files.append(file)
     return data_files
 
-'''
-def get_all_sub_folders(folder_path):
-    #todo: candidate for deletion
-    processed_folders = []
-    to_be_processed_folders = [folder_path]
-    while len(to_be_processed_folders)>0:
-        for folder in to_be_processed_folders:
-            subfolders = get_all_folders_in_folder(folder)
-            to_be_processed_folders.remove(folder)
-            processed_folders.append(folder)
-            for s in subfolders:
-                to_be_processed_folders.append(s)
-    return processed_folders
-'''
 
 def create_name(name, path, extension, modificaiton = ""):
     ret = path + "/" + name + modificaiton + extension
@@ -159,14 +151,30 @@ def get_extension(name_with_extension):
 
 def abbreviate_name(file_path, new_extension = False, target_string = False, static_length = False, characters_kept_after_target = 0):
     name = get_stem(file_path)
+    old = file_path
+    new = ""
+    if name == file_path:
+        if os.path.isfile(file_path):
+            if new_extension:
+                new = file_path + new_extension
+            else:
+                print("file without extension passed to abbreviate name and no new extension specfied. Default x extension given.")
+                new = new + '.X'
     extension = get_extension(file_path)
     if new_extension:
         extension = new_extension
-    parent_folder = get_parent_folder(file_path)
+    parent_folder = get_parent_folder(new)
     if static_length and len(name) > static_length:
         ret = name[:static_length]
     if target_string:
         loc = name.find(target_string)
-        ret = name[:loc+1 + characters_kept_after_target]
-    ret = parent_folder +"/"+ret + "." + extension
+        ret = name[:loc+len(target_string) + characters_kept_after_target]
+        ret = get_stem(ret)
+    if extension.rfind("."):
+        ret = ret + extension
+    else:
+        ret = parent_folder + "/" + ret +"."+ extension
+    # automatically writes over previous file.
+    if os.path.exists(ret):
+        os.remove(ret)
     os.rename(file_path, ret)

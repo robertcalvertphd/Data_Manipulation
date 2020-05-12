@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import filedialog
 from tkinter import simpledialog
-import h_format_manipulators as hf
+import core.h_format_manipulators as hf
 
 def getInt(prompt, _max, _min=1):
     while 1:
