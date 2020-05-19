@@ -6,6 +6,7 @@ from core.h_file_handling import get_stem
 from core.h_file_handling import get_all_file_names_in_folder
 from core.h_file_handling import get_lines
 from core.h_file_handling import get_all_folders_in_folder
+from core.h_file_handling import os
 from numpy import unique
 
 import pandas as pd
@@ -63,6 +64,7 @@ def get_low_performing_items(df, n=10):
 def get_aggregate_report_items(df):
     ret = df.sort_values(by='Item ID')
     ret = ret[['Item ID', 'b', 'T-Rpbis', 'S-Rpbis', 'Flags']]
+    proexam = ret
     return ret
 
 
@@ -166,6 +168,7 @@ def create_general_report_table(aggregate_cs_path, name, destination_path):
         lines[0].append(s)
     good_irt = 0
     cautions = 0
+    pro_exam_lines = []
     for id in unique_df:
         subset = df[df['Item ID'] == id]
         s = subset.copy()
@@ -189,7 +192,10 @@ def create_general_report_table(aggregate_cs_path, name, destination_path):
     print("Cautions:", cautions, "of", len(lines), "=", str(round(cautions * 100 / (len(lines) - 1), 2)) + "%")
     report_df = pd.DataFrame(lines)
     final_report_name = destination_path+"/"+name+"_complete_.csv"
+    pro_exam_report = destination_path+"/"+name+"_pro_exam_.txt"
     report_df.to_csv( final_report_name , index=False, header=0)
+    report_df.to_csv(pro_exam_report, index = False, header = 0)
+
     _df = pd.read_csv(final_report_name)
     for i in _df:
         print(i)
@@ -302,7 +308,16 @@ def get_passing_thetas(report_title):
 #get_passing_thetas("LCLE")
 # todo: remove items that have no item_id (old items) currently I just manually deleted them.
 
+def empty_reports_folder(report_path):
+    files = get_all_file_names_in_folder(report_path)
+    for file in files:
+        os.remove(file)
+
+def create_pro_exam_report(complete_df):
+    print("hello")
+    pro_df = complete_df["TR-Mean", "SR-Mean", "B_Mean","K"]
 def create_all(xCalibre_report, aggregate_report_path, report_name):
+    empty_reports_folder(aggregate_report_path)
     create_all_reports(xCalibre_report, aggregate_report_path)
     create_aggregate_reports(aggregate_report_path, aggregate_report_path)
     aggregate_file = aggregate_report_path + "/" + "_aggregate_c_agg.csv"

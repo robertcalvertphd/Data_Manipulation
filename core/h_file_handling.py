@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 
 
-def copy_file_and_write_to_destination(file, destination, modified_name = False, new_extension = False):
+def copy_file_and_write_to_destination(file, destination, modified_name = False, new_extension = False, upper = True):
     lines = get_lines(file)
     if lines:
         if new_extension:
@@ -72,6 +72,8 @@ def get_all_files(path_to_data, target_string = None):
 
 
 def create_name(name, path, extension, modificaiton = ""):
+    if extension.rfind('.') == -1:
+        extension  = '.' + extension
     ret = path + "/" + name + modificaiton + extension
     return ret
 
@@ -86,6 +88,11 @@ def get_next_blank_line_after_index(file_path, index):
                     return count
             count += 1
         return False
+
+
+def rename_all_files_to_lower(files):
+    for file in files:
+        os.rename(file,file.lower())
 
 
 def get_lines_from_X_to_Y_from_file(file_path, x, y):
@@ -149,7 +156,10 @@ def get_extension(name_with_extension):
     return False
 
 
-def abbreviate_name(file_path, new_extension = False, target_string = False, static_length = False, characters_kept_after_target = 0):
+def abbreviate_name(file_path, new_extension = False, target_string = False, static_length = False, characters_kept_after_target = 0, AB = False):
+    # AB assumes there will be a target string that preceeds the form
+    # e.g Form A
+
     name = get_stem(file_path)
     old = file_path
     new = ""
@@ -161,6 +171,12 @@ def abbreviate_name(file_path, new_extension = False, target_string = False, sta
                 print("file without extension passed to abbreviate name and no new extension specfied. Default x extension given.")
                 new = new + '.X'
     extension = get_extension(file_path)
+    form = False
+    if AB:
+        form_loc = file_path.find(AB)
+        if form_loc > -1:
+            form = file_path[form_loc+5]
+
     if new_extension:
         extension = new_extension
     parent_folder = get_parent_folder(new)
@@ -169,6 +185,8 @@ def abbreviate_name(file_path, new_extension = False, target_string = False, sta
     if target_string:
         loc = name.find(target_string)
         ret = name[:loc+len(target_string) + characters_kept_after_target]
+        if form:
+            ret+=form
         ret = get_stem(ret)
     if extension.rfind("."):
         ret = ret + extension
@@ -178,3 +196,11 @@ def abbreviate_name(file_path, new_extension = False, target_string = False, sta
     if os.path.exists(ret):
         os.remove(ret)
     os.rename(file_path, ret)
+
+
+def is_delimited(file, delimiter, minimum_columns = 4):
+    lines = get_lines(file)
+    split_line = lines[0].split(delimiter)
+    if len(split_line) < minimum_columns:
+        return False
+    return True

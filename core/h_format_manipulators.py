@@ -1,4 +1,5 @@
 import core.h_file_handling as hfh
+import core.h_user_input as ui
 pd = hfh.pd
 np = hfh.np
 
@@ -7,6 +8,8 @@ np = hfh.np
 
 
 def convert_iteman_format(file_name, destination_path ="", create_csv = True, pretest_cutoff = False):
+    if file_name == "LCLE_IRT/data/AB Forms by Admin/LCLE2018ABForms/Jan2018AB/LCLEJan2018BTest.txt":
+        print("target")
     #   old format is of style
     #   gibberish first line
     #   correct answers
@@ -58,7 +61,6 @@ def convert_iteman_format(file_name, destination_path ="", create_csv = True, pr
             df.to_csv(control_file_path, header = None, index=None)
             data_file_path = destination_path + "/" + hfh.get_stem(file_name)+"_f.txt"
             hfh.write_lines_to_text(old[4:], data_file_path)
-
         if is_valid_data(data_file_path):
             return True
         return False
@@ -173,18 +175,22 @@ def create_mapping_from_Karen_test_data(file_path, destination_path = "", create
     #   ....  where no lines will start with a number and then a dot other than my target lines
     #   number. Name NN
     #   name of file is stem(file_path)+_L.csv
-    ret = [['form', 'test_id', 'subject', 'bank_id_number', 'bank_id']]
-    for line in lines:
-        if line[0].isnumeric():
-            entry = line.split()
-            test_name = hfh.get_stem(file_path)
-            test_id = line[:line.index('.')]
-            subject = entry[1]
-            bank_id = entry[2]
-            record = [test_name, test_id, subject, bank_id, subject+"_"+str(bank_id)]
-            ret.append(record)
-    df = pd.DataFrame(ret)
-
+    ret = []
+    if lines:
+        for line in lines:
+            if line[0].isnumeric():
+                entry = line.split()
+                test_name = hfh.get_stem(file_path)
+                test_id = line[:line.index('.')]
+                subject = entry[1]
+                bank_id = entry[2]
+                record = [test_name, test_id, subject, bank_id, subject+"_"+str(bank_id)]
+                ret.append(record)
+        df = pd.DataFrame(ret)
+        df.columns = ['form', 'test_id', 'subject', 'bank_id_number', 'bank_id']
+        print("hello")
+    else:
+        print(file_path + "does not contain lines.")
     if create_csv:
         name = hfh.get_stem(file_path) + "_L.csv"
         #df.sort_values(df[1])
@@ -311,14 +317,24 @@ def remove_header_and_blank_lines(control_path):
             ret.append(line)
     hfh.write_lines_to_text(ret, control_path)
 
-
-def convert_delimited_control(control_file, destination_path, delimiter = '\t', remove_version = False, remove_header = True):
+def convert_control_to_include_pretest(control_file):
+    lines = hfh.get_lines(control_file)
+    ret = []
+    for line in lines:
+        split_line = line.split(',')
+        ret_line = split_line[0]+"," +split_line[1]+"," +split_line[2]+"," +split_line[3]+ ",Y,"+split_line[5]
+        ret.append(ret_line)
+    dot = control_file.rfind(".")
+    name = control_file[:dot]+"_cf.csv"
+    hfh.write_lines_to_text(ret, name)
+def convert_delimited_control(control_file, destination_path, delimiter = '\t', remove_version = False,remove_header = True):
     lines = hfh.get_lines(control_file)
     ret = []
     changed = False
+    csv_detected = False
     if len(lines)>1:
         if remove_header:
-            lines = lines[1:]
+            check_for_header(control_file, True)
         for line in lines:
             # check for delimiter
             split_line = line.split(delimiter)
@@ -329,6 +345,7 @@ def convert_delimited_control(control_file, destination_path, delimiter = '\t', 
                     version_location = ret_line.rfind('V')
                     if version_location > 0:
                         ret_line = ret_line[:version_location]+','
+
                 for i in split_line[1:]:
                     ret_line += i + ','
                 ret_line=ret_line[:-1]
@@ -338,6 +355,7 @@ def convert_delimited_control(control_file, destination_path, delimiter = '\t', 
                 split_line = line.split(',')
                 # if comma delimited and removing version get bank id and remove version
                 if len(split_line)>1 and remove_version:
+                    csv_detected = True
                     ret_line = split_line[0]
                     version_location = ret_line.rfind('V')
                     if version_location > 0:
@@ -346,10 +364,12 @@ def convert_delimited_control(control_file, destination_path, delimiter = '\t', 
                             ret_line += i + ','
                         ret_line = ret_line[:-1]
                         ret.append(ret_line)
-                        print("Comma delimited identified. ID_BANK version identifier removed" )
+
                 else:
                     ret.append(line)
 
+        if csv_detected:
+            print("Comma delimited identified. ID_BANK version identifier removed" )
         if not changed:
             print(control_file + " asked to be delimiter converted but did not contain target delimiter")
 
@@ -358,7 +378,6 @@ def convert_delimited_control(control_file, destination_path, delimiter = '\t', 
     else:
         print(control_file, " is an empty file and asked to be converted")
         return False
-
 
 
 def is_valid_control(file):
@@ -387,6 +406,36 @@ def is_valid_control(file):
     return valid
 
 
+def convert_delimited_to_iteman(file, destination_path, delimiter = ','):
+    #verify is CSV
+    ret = []
+    lines = hfh.get_lines(file)
+    if len(lines)>0:
+        if len(lines[0].split(delimiter)) >1:
+            #is CSV
+            for line in lines:
+                new_line = ""
+                line = line.split(delimiter)
+                id_handled = False
+                non_answer_characters = False
+                for i in line:
+                    if not id_handled:
+                        i+='   '
+                        id_handled = True
+                    if not i == 'Y' and not i == 'M':
+                        new_line+=i
+                ret.append(new_line)
+        if not non_answer_characters:
+            print(file, "non answer character in data response string. It was removed.")
+
+        name = hfh.create_name(hfh.get_stem(file),destination_path,'txt','_f')
+        hfh.write_lines_to_text(ret, name)
+        return True
+    else:
+        print(file, "is empty")
+        return False
+
+
 def fix_format_of_data_file(file, destination):
     valid = is_valid_data(file)
     if valid:
@@ -410,6 +459,75 @@ def add_header_to_csvs(path_to_files, header, target_string):
             with open(file, 'w') as modified: modified.write(header+'\n' + data)
 
 
+def has_acceptable_correct_percentage(xCalibre_report_path, id_length = 8, debug = True):
+    files = hfh.get_all_files(xCalibre_report_path,"Matrix")
+    for file in files:
+        total = 0
+        correct = 0
+        lines = hfh.get_lines(file)
+        for line in lines:
+            scores = line[id_length:-1]
+            for x in scores:
+                total += 1
+                try:
+                    correct += int(x)
+                except:
+                    pass
+        percent_correct = round(correct/total*100,4)
+        if debug: print(percent_correct)
+        if percent_correct < 50:
+            print(file, "has low correct rate.")
+            return False
+    return True
+
+
+def create_key_df_from_csv(file_path):
+    #   assumes format
+    #   Position,Domain,AccNum,UseCode,CorrectAnswer,Content Area,...
+    #   1,02,LLE669,Operational,C,0202,44,,56,0.18,,,Bank,InUse,1,,,101,AUG19(P),,,0,1,0,No,,1, ,5/13/2019,
+
+    df = hfh.get_df(file_path, header = 0)
+    ret = []
+    test_ids = df['Position'].tolist()
+    bank_ids = df['AccNum'].tolist()
+    for i in range(len(test_ids)):
+        form = hfh.get_stem(file_path)
+        test_id = test_ids[i]
+        bank_id = bank_ids[i]
+        subject = bank_id[:3]
+        bank_id_number = bank_id[3:]
+        ret.append([form, test_id, subject, bank_id_number, bank_id])
+    df = pd.DataFrame(ret)
+    df.columns = ['form', 'test_id', 'subject', 'bank_id_number', 'bank_id']
+    name = hfh.create_name(hfh.get_stem(file_path),"LPCC_IRT/keys/L_files","csv",'_L')
+    df.to_csv(name, index=None)
+    return df
+
+def check_for_header(file, remove_if_present, interactive = True):
+    lines = hfh.get_lines(file)
+    has_header = False
+    if len (lines)>1:
+        #   assumes that a header line has a different length than data
+        #   assumes delimited by comma
+        line0 = len(lines[0])
+        line1 = len(lines[1])
+        if not line0 == line1:
+            if interactive:
+                has_header = ui.get_yes_no_response("Remove Header?\n",str("Is this a header?" + lines[0] + "?"))
+            else:
+                has_header = True
+                print(file,line0,'\n', "header automatically removed. Confirm that it had a header")
+        #   todo: when this fails fix it
+    if remove_if_present and has_header:
+        lines = lines[1:]
+        hfh.write_lines_to_text(lines, file)
+    if has_header:
+        return True
+    return False
+
+
+
+
 def set_standard_id_length_in_data_files(path_to_files,target_length, spaces_between_id_and_data = 3):
     #assumes data has spaces
     files = hfh.get_all_file_names_in_folder(path_to_files, target_string='_f.txt')
@@ -423,7 +541,7 @@ def set_standard_id_length_in_data_files(path_to_files,target_length, spaces_bet
             else:
                 end_of_space = first_space+spaces_between_id_and_data
                 remainder = line[end_of_space:]
-                id_length = first_space+1
+                id_length = first_space
                 _id = line[:first_space]
                 new = line
                 if  id_length < target_length:
@@ -439,7 +557,6 @@ def set_standard_id_length_in_data_files(path_to_files,target_length, spaces_bet
             #name = hfh.create_name(file,hfh.get_parent_folder(file)+"/formatted_data")
             hfh.write_lines_to_text(new_lines, file)
 
-
 #set_standard_id_length_in_data_files("PT_IRT/PT_processed_data", 8)
 #convert_xCalibre_matrix_for_PCI("PT_data/score_matrices/PT1_18_m.txt")
 #process_karen_data("LCLE_IRT","LCLE_IRT","LCLE_IRT/processed_data/")
@@ -451,4 +568,3 @@ def set_standard_id_length_in_data_files(path_to_files,target_length, spaces_bet
 #create_control_files(path_to_files)
 #update_control_files_with_item_bank_key("data_files/item_map.csv", "data_files")
 #convert_2016_format("data_files/pt3_16.txt")
-
