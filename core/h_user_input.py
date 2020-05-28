@@ -68,11 +68,14 @@ def get_yes_no_response(title, message):
         return 0
 
 
-def get_folder(title = "Select folder where data or folders of data are located."):
+def get_folder(title = "Select folder where data or folders of data are located.", required = True):
     root = tk.Tk()
     root.withdraw()
-    file_path = ""
-    while file_path == "":
+    if required:
+        file_path = ""
+        while file_path == "":
+            file_path = filedialog.askdirectory(title=title)
+    else:
         file_path = filedialog.askdirectory(title=title)
     return file_path
 

@@ -38,61 +38,91 @@ def get_all_folders_in_folder(folder_path):
 
 
 def get_all_file_names_in_folder(folder_path, extension = False, target_string = False):
-    list = os.listdir(folder_path)
-    ret = []
-    if extension:
-        for item in list:
-            e = get_extension(item)
-            if e == extension:
+    if os.path.isdir(folder_path):
+        list = os.listdir(folder_path)
+        ret = []
+        if extension:
+            for item in list:
+                e = get_extension(item)
+                if e == extension:
+                    ret.append(folder_path + "/" + item)
+        elif target_string:
+            for item in list:
+                f = item.find(target_string)
+                if f>-1 :
+                    ret.append(folder_path + "/" + item)
+        else:
+            for item in list:
                 ret.append(folder_path + "/" + item)
-    elif target_string:
-        for item in list:
-            f = item.find(target_string)
-            if f>-1 :
-                ret.append(folder_path + "/" + item)
+        return ret
     else:
-        for item in list:
-            ret.append(folder_path + "/" + item)
-    return ret
-
-
+        print(folder_path + " is not a folder.")
 def get_all_files(path_to_data, target_string = None):
     folders = get_all_folders_in_folder(path_to_data)
     folders.append(path_to_data)
     data_files = []
     for folder in folders:
-        sub_folders = get_all_folders_in_folder(folder)
-        for s in sub_folders:
-            folders.append(s)
+        if os.path.isdir(folder):
+            sub_folders = get_all_folders_in_folder(folder)
+            for s in sub_folders:
+                folders.append(s)
     for folder in folders:
-        files = get_all_file_names_in_folder(folder,target_string=target_string)
-        for file in files:
-            data_files.append(file)
+        if os.path.isdir(folder):
+            files = get_all_file_names_in_folder(folder,target_string=target_string)
+            for file in files:
+                    if os.path.isfile(file):
+                        data_files.append(file)
     return data_files
 
-
+def find_and_replace_string_in_file(file, find, replace):
+    lines = get_lines(file)
+    ret = []
+    for line in lines:
+        line = line.replace(find,replace)
+        ret.append(line)
+    write_lines_to_text(ret,file)
 def create_name(name, path, extension, modificaiton = ""):
     if extension.rfind('.') == -1:
         extension  = '.' + extension
     ret = path + "/" + name + modificaiton + extension
     return ret
 
+def get_index_of_line_that_starts_with_word_based_on_delimiter(lines, word, delimiter = ','):
+    index = -1
+    looking = True
+    while looking:
+        index += 1
+        split_line = lines[index].split(delimiter)
+        if split_line[0] == word:
+            looking = False
+    return index
+
+
+def get_next_blank_line_after_index_from_lines(lines, index):
+    count = 0
+    for line in lines[index:]:
+        if line == "\n":
+            return count
+        count += 1
+    return False
+
 
 def get_next_blank_line_after_index(file_path, index):
+    ### should deprecate the file_path option
     with open(file_path) as file:
         lines = file.readlines()
         count = 0
-        for line in lines:
+        for line in lines[index:]:
             if line == "\n":
-                if count > index:
-                    return count
+                return count
             count += 1
         return False
 
 
 def rename_all_files_to_lower(files):
     for file in files:
-        os.rename(file,file.lower())
+        if os.path.isfile(file):
+            os.rename(file,file.lower())
 
 
 def get_lines_from_X_to_Y_from_file(file_path, x, y):
@@ -124,8 +154,10 @@ def get_df(path_to_csv, header = None, index = None, dtype = object):
 
 def write_lines_to_text(lines, file_path, mode = 'w'):  # candidate for general helper file
     with open(file_path, mode) as file:
-        file.writelines(lines)
-
+        try:
+            file.writelines(lines)
+        except:
+            print("hello")
 
 def remove_first_line_of_csv(file_path):
     lines = get_lines(file_path)

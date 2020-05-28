@@ -31,7 +31,7 @@ def get_difficulties_of_items(df_of_items, path_aggregate_data, column_index_of_
     b_list = b.to_list()
     b_list = h.pd.to_numeric(b_list)
     m = b_list.mean()
-    return b, m, len(b_list)
+    return b, m, len(b_list), a
 
 
 def get_items_not_in_aggregate_data(path_to_items, path_to_aggregate_data, Karen_data = False, Amy_data = False):
@@ -78,6 +78,30 @@ def evaluate_test_items(path_to_items, path_to_aggregate_data, passing_theta, Ka
     #print (hfh.get_stem(path_to_items), predicted_correct/len(bs), diff[1], diff[2])
     return [hfh.get_stem(path_to_items), predicted_correct/len(bs), diff[1], diff[2]]
 
+def create_key_from_control_file(control_path, path_to_keys):
+    #assumes control does not have header
+    df = hfh.get_df(control_path)
+    df.columns = ["ID","b","c","d","e","f"]
+    ids = df['ID'].to_list()
+    ret = ["Position,AccNum\n"]
+    counter = 0
+    for id in ids:
+        counter+=1
+        line = str(counter)+","+id+"\n"
+        ret.append(line)
+    name = path_to_keys +"/"+ hfh.get_stem(control_path)+"_KEY.csv"
+    hfh.write_lines_to_text(ret,name)
+
+def create_key_from_L_file(L_file, path_to_keys):
+    lines = hfh.get_lines(L_file)[1:]
+    counter = 0
+    ret = ["Position,AccNum\n"]
+    for line in lines:
+        counter += 1
+        split_line = line.split(",")
+        ret.append(str(counter)+"," + split_line[4])
+    file_path = path_to_keys + "/" + hfh.get_stem(L_file)[:-2] + "_KEY.txt"
+    hfh.write_lines_to_text(ret, file_path)
 
 def evaluate_past_tests(report_path, test_path, passing_theta, key_strings = ['Key','KEY','Test'], Karen_data = False, Amy_data = False, ):
     #LMLE_report = "LMLE_IRT/reports/_LMLE__complete_.csv"
@@ -107,6 +131,20 @@ def evaluate_past_tests(report_path, test_path, passing_theta, key_strings = ['K
     df = hfh.pd.DataFrame(records)
     df.to_csv(report_path+"/"+"_passing.csv", header = None, index = 0)
 
+
+def make_key_of_n_top_B_from_complete(complete_file, key_path, n):
+    df = hfh.get_df(complete_file, header = 0)
+    df = df.sort_values(by = "B mean", ascending=False)
+    ids = df.head(n)['Item ID'].tolist()
+    counter = 0
+    ret = []
+    for i in ids:
+        counter+=1
+        ret.append([counter,i])
+    ret_df = hfh.pd.DataFrame(ret)
+    ret_df.columns = ["Position","AccNum"]
+    ret_df.to_csv(key_path+"/"+"topDiff_KEY.csv", index = False)
+    print("hello")
 
 #report_path = "LMLE_IRT/reports/"
 #test_path = "LMLE_IRT/keys/"

@@ -115,7 +115,21 @@ def convert_answers_to_default_control(file_name, answers, destination_path, cut
     hfh.write_lines_to_text(new, name + "_c.csv")
 
 
-def convert_first_line_answers_to_default_control_and_data(file_name, cutoff_for_not_included =175):
+def convert_default_data_to_iteman(file_name, processed_data_path, new_name = False):
+    lines = hfh.get_lines(file_name)
+    ret = []
+    for line in lines[2:]:
+        line = set_standard_id_length_for_line(line,8)
+        ret.append(line)
+
+    path = processed_data_path + "/" + hfh.get_stem(file_name) + "_f.txt"
+    if new_name:
+        path = processed_data_path + "/" + hfh.get_stem(new_name) + "_f.txt"
+
+    hfh.write_lines_to_text(ret, path)
+
+
+def convert_first_line_answers_to_default_control_and_data(file_name):
     #todo: handle cutoff for not included
     lines = hfh.get_lines(file_name)
     correct = lines[0]
@@ -125,8 +139,6 @@ def convert_first_line_answers_to_default_control_and_data(file_name, cutoff_for
         counter +=1
         if not a == '\n':
             include = 'y'
-            if counter > cutoff_for_not_included:
-                include ='n'
             new.append(str(counter)+","+a +",4,1,"+include+",M\n")
 
     name = hfh.get_stem(file_name)
@@ -134,7 +146,7 @@ def convert_first_line_answers_to_default_control_and_data(file_name, cutoff_for
     #   contains a random F at the end will test to see if it matters
     formatted = []
     for line in lines[2:]:
-        formatted.append(line[:])
+        formatted.append(line[:]) #no clue why : is here perhaps I will remove it.
     hfh.write_lines_to_text(formatted, name + "_f.txt")
 
 
@@ -168,7 +180,7 @@ def update_control_files_with_item_bank_key(path_to_item_bank_csv, path_to_contr
             #remove_first_line_of_csv(file_path)
 
 
-def create_mapping_from_Karen_test_data(file_path, destination_path = "", create_csv = False):
+def create_mapping_from_Karen_test_data(file_path, destination_path = "", create_csv = False, add_underscore = False):
     lines = hfh.get_lines(file_path)
     #   assumes files are of format
     #   number. Name NN
@@ -184,17 +196,22 @@ def create_mapping_from_Karen_test_data(file_path, destination_path = "", create
                 test_id = line[:line.index('.')]
                 subject = entry[1]
                 bank_id = entry[2]
-                record = [test_name, test_id, subject, bank_id, subject+"_"+str(bank_id)]
+                underscore = ""
+                if add_underscore:
+                    underscore = "_"
+                record = [test_name, test_id, subject, bank_id, subject+underscore+str(bank_id)]
                 ret.append(record)
+
         df = pd.DataFrame(ret)
         df.columns = ['form', 'test_id', 'subject', 'bank_id_number', 'bank_id']
-        print("hello")
+
     else:
         print(file_path + "does not contain lines.")
     if create_csv:
-        name = hfh.get_stem(file_path) + "_L.csv"
+        name = hfh.get_stem(file_path)[:8]
         #df.sort_values(df[1])
-        df.to_csv(destination_path + name, index = False, header = 0)
+        file_name = destination_path+ "/" + name + "_L.csv"
+        df.to_csv(file_name, index = False, header = 0)
 
     return df
 
@@ -317,6 +334,7 @@ def remove_header_and_blank_lines(control_path):
             ret.append(line)
     hfh.write_lines_to_text(ret, control_path)
 
+
 def convert_control_to_include_pretest(control_file):
     lines = hfh.get_lines(control_file)
     ret = []
@@ -327,6 +345,8 @@ def convert_control_to_include_pretest(control_file):
     dot = control_file.rfind(".")
     name = control_file[:dot]+"_cf.csv"
     hfh.write_lines_to_text(ret, name)
+
+
 def convert_delimited_control(control_file, destination_path, delimiter = '\t', remove_version = False,remove_header = True):
     lines = hfh.get_lines(control_file)
     ret = []
@@ -450,8 +470,12 @@ def fix_format_of_data_file(file, destination):
     return valid
 
 
-def add_header_to_csvs(path_to_files, header, target_string):
-    files = hfh.get_all_file_names_in_folder(path_to_files, target_string=target_string)
+def add_header_to_csvs(path_to_files, header, target_string = ".", single_file = False):
+    files = []
+    if single_file:
+        files.append(path_to_files)
+    else:
+        files = hfh.get_all_file_names_in_folder(path_to_files, target_string=target_string)
     for file in files:
         with open(file, 'r') as original:
             data = original.read()
@@ -474,7 +498,7 @@ def has_acceptable_correct_percentage(xCalibre_report_path, id_length = 8, debug
                 except:
                     pass
         percent_correct = round(correct/total*100,4)
-        if debug: print(percent_correct)
+        if debug: print(file, percent_correct)
         if percent_correct < 50:
             print(file, "has low correct rate.")
             return False
@@ -503,6 +527,7 @@ def create_key_df_from_csv(file_path):
     df.to_csv(name, index=None)
     return df
 
+
 def check_for_header(file, remove_if_present, interactive = True):
     lines = hfh.get_lines(file)
     has_header = False
@@ -526,6 +551,26 @@ def check_for_header(file, remove_if_present, interactive = True):
     return False
 
 
+def set_standard_id_length_for_line(line, target_length, spaces_between_id_and_data = 3):
+    first_space = line.find(' ')
+    if first_space == -1:
+        pass
+    else:
+        end_of_space = first_space + spaces_between_id_and_data
+        remainder = line[end_of_space:]
+        id_length = first_space
+        _id = line[:first_space]
+        new = line
+        if id_length < target_length:
+            new = ""
+            spacers_needed = target_length - id_length
+            for spacer in range(spacers_needed):
+                new += '_'
+            new += _id
+            for space in range(spaces_between_id_and_data):
+                new += ' '
+            new += remainder
+        return new
 
 
 def set_standard_id_length_in_data_files(path_to_files,target_length, spaces_between_id_and_data = 3):
@@ -535,27 +580,9 @@ def set_standard_id_length_in_data_files(path_to_files,target_length, spaces_bet
         new_lines = []
         lines = hfh.get_lines(file)
         for line in lines:
-            first_space = line.find(' ')
-            if first_space == -1:
-                pass
-            else:
-                end_of_space = first_space+spaces_between_id_and_data
-                remainder = line[end_of_space:]
-                id_length = first_space
-                _id = line[:first_space]
-                new = line
-                if  id_length < target_length:
-                    new = ""
-                    spacers_needed = target_length-id_length
-                    for spacer in range(spacers_needed):
-                        new += '_'
-                    new += _id
-                    for space in range(spaces_between_id_and_data):
-                        new += ' '
-                    new += remainder
-                new_lines.append(new)
+           new_lines.append(set_standard_id_length_for_line(line, target_length))
             #name = hfh.create_name(file,hfh.get_parent_folder(file)+"/formatted_data")
-            hfh.write_lines_to_text(new_lines, file)
+        hfh.write_lines_to_text(new_lines, file)
 
 #set_standard_id_length_in_data_files("PT_IRT/PT_processed_data", 8)
 #convert_xCalibre_matrix_for_PCI("PT_data/score_matrices/PT1_18_m.txt")

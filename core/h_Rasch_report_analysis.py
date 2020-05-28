@@ -316,6 +316,8 @@ def empty_reports_folder(report_path):
 def create_pro_exam_report(complete_df):
     print("hello")
     pro_df = complete_df["TR-Mean", "SR-Mean", "B_Mean","K"]
+
+
 def create_all(xCalibre_report, aggregate_report_path, report_name):
     empty_reports_folder(aggregate_report_path)
     create_all_reports(xCalibre_report, aggregate_report_path)
