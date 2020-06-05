@@ -116,6 +116,8 @@ def convert_answers_to_default_control(file_name, answers, destination_path, cut
 
 
 def convert_default_data_to_iteman(file_name, processed_data_path, new_name = False):
+    if processed_data_path[-1] == '/':
+        processed_data_path = processed_data_path[:-1]
     lines = hfh.get_lines(file_name)
     ret = []
     for line in lines[2:]:
@@ -148,6 +150,45 @@ def convert_first_line_answers_to_default_control_and_data(file_name):
     for line in lines[2:]:
         formatted.append(line[:]) #no clue why : is here perhaps I will remove it.
     hfh.write_lines_to_text(formatted, name + "_f.txt")
+
+
+def convert_response_string_to_csv_and_get_df(file, id_length, number_of_spaces, create_csv= False):
+    df_rows = []
+    lines = hfh.get_lines(file)
+    for line in lines:
+        df_row = []
+        beginning = id_length + number_of_spaces
+        FR_space = line.rfind('F')
+        if FR_space == -1:
+            FR_space = line.rfind('R')
+        if FR_space > -1:
+            stripped_line = line[beginning:FR_space]
+        else:
+            stripped_line = line[beginning:]
+        for c in stripped_line:
+            df_row.append(c)
+        df_rows.append(df_row)
+
+    df = pd.DataFrame(df_rows)
+    if create_csv:
+        name = hfh.create_name(file, modificaiton="_d_")
+        df.to_csv(name)
+    return df
+
+
+def convert_csv_response_string_to_raw_with_bogus_header(file, id_spaces = 3):
+    lines = hfh.get_lines(file)
+    ret = ["BOGUS \n\n"]
+    for line in lines:
+        id_loc = line.find(',')
+        id = line[:id_loc]
+        spaces = ""
+        for i in range(id_spaces):
+            spaces += ' '
+        ret_line = id + spaces
+        ret_line += line[id_loc:].replace(',','')
+        ret.append(ret_line)
+    hfh.write_lines_to_text(ret,file+"_m")
 
 
 def convert_control_to_include_pretest(file_path):

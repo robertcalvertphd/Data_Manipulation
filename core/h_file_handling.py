@@ -1,23 +1,43 @@
 #   this file contains functions that modify files and retrieve information
 import os
 import pandas as pd
+from shutil import copyfile
 import numpy as np
+
+def file_is_readable(file_path):
+    try:
+        with open(file_path, mode='r') as file:
+            return file.readable()
+    except IOError as e:
+        return 0
+
+
+def file_is_writable(file_path):
+    try:
+        with open(file_path, mode='a') as file:
+            return file.writable()
+    except IOError as e:
+        return 0
 
 
 def copy_file_and_write_to_destination(file, destination, modified_name = False, new_extension = False, upper = True):
-    lines = get_lines(file)
-    if lines:
-        if new_extension:
-            extension = new_extension
-        else:
-            extension = "." + get_extension(file)
-        name = destination +"/" + get_stem(file) + extension
-        if modified_name:
-            name = destination + "/" + modified_name
-        write_lines_to_text(lines, name)
+
+    if new_extension:
+        extension = new_extension
     else:
-        print("invalid copy. no lines present in file" + file)
+        extension = "." + get_extension(file)
+
+    name = destination +"/" + get_stem(file) + extension
+
+    if modified_name:
+        name = destination + "/" + modified_name
+    try:
+        copyfile(file, name)
+        return True
+    except:
+        print("problem copying file:" + file)
         return False
+
 
 def purge_invalid_extensions(files, list_of_valid_extensions):
     ret = []
@@ -32,15 +52,16 @@ def get_all_folders_in_folder(folder_path):
     list = os.listdir(folder_path)
     ret = []
     for item in list:
-        if get_stem(item) == item:
-            ret.append(folder_path + "/"+item)
+        if os.path.isdir(folder_path + '/'+item):
+            ret.append(folder_path + '/'+item)
     return ret
 
 
-def get_all_file_names_in_folder(folder_path, extension = False, target_string = False):
+def get_all_file_names_in_folder(folder_path, extension = False, target_string = False, can_be_empty = True):
+    ret = []
     if os.path.isdir(folder_path):
         list = os.listdir(folder_path)
-        ret = []
+
         if extension:
             for item in list:
                 e = get_extension(item)
@@ -57,22 +78,27 @@ def get_all_file_names_in_folder(folder_path, extension = False, target_string =
         return ret
     else:
         print(folder_path + " is not a folder.")
-def get_all_files(path_to_data, target_string = None):
+        if can_be_empty:
+            return ret
+        return False
+def get_all_files(path_to_data, target_string = False, extension = False):
+    #todo: verify that this works with many layers of folders
     folders = get_all_folders_in_folder(path_to_data)
-    folders.append(path_to_data)
     data_files = []
     for folder in folders:
         if os.path.isdir(folder):
             sub_folders = get_all_folders_in_folder(folder)
             for s in sub_folders:
                 folders.append(s)
+    folders.append(path_to_data)
     for folder in folders:
         if os.path.isdir(folder):
-            files = get_all_file_names_in_folder(folder,target_string=target_string)
+            files = get_all_file_names_in_folder(folder,target_string=target_string, extension = extension)
             for file in files:
                     if os.path.isfile(file):
                         data_files.append(file)
     return data_files
+
 
 def find_and_replace_string_in_file(file, find, replace):
     lines = get_lines(file)
@@ -81,11 +107,21 @@ def find_and_replace_string_in_file(file, find, replace):
         line = line.replace(find,replace)
         ret.append(line)
     write_lines_to_text(ret,file)
-def create_name(name, path, extension, modificaiton = ""):
-    if extension.rfind('.') == -1:
-        extension  = '.' + extension
-    ret = path + "/" + name + modificaiton + extension
+
+
+def create_name(path, extension = False, name = False, modificaiton = ""):
+    #modified
+    print("changed on 6_2_20 if problems")
+    if not name:
+        name = get_stem(path)
+    if extension:
+        if extension.rfind('.') == -1:
+            extension = '.' + extension
+    else:
+        extension = get_extension(path)
+    ret = get_parent_folder(path) + "/" + name + modificaiton + extension
     return ret
+
 
 def get_index_of_line_that_starts_with_word_based_on_delimiter(lines, word, delimiter = ','):
     index = -1
@@ -153,11 +189,25 @@ def get_df(path_to_csv, header = None, index = None, dtype = object):
 
 
 def write_lines_to_text(lines, file_path, mode = 'w'):  # candidate for general helper file
+    double_forward = '//'
+    if file_path.find(double_forward)>-1:
+        print("double forward slash found and removed")
+        file_path.replace(double_forward,'/')
     with open(file_path, mode) as file:
-        try:
+        for line in lines:
+            if line is not None:
+                file.write(line)
+    return 1
+    '''
+    try:
+        with open(file_path, mode) as file:
             file.writelines(lines)
-        except:
-            print("hello")
+        return 1
+    except:
+        print("could not open file:" + file_path)
+        return 0
+    '''
+
 
 def remove_first_line_of_csv(file_path):
     lines = get_lines(file_path)
@@ -236,3 +286,10 @@ def is_delimited(file, delimiter, minimum_columns = 4):
     if len(split_line) < minimum_columns:
         return False
     return True
+
+def convert_xlsx_to_csv(file_path, destination_path):
+    read_file = pd.read_excel(file_path)
+    read_file.to_csv(destination_path, index=None, header=True)
+
+def get_df_from_xlsx(file_path):
+    return pd.read_excel(file_path)
