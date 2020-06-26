@@ -317,7 +317,7 @@ def merge_control_and_bank_info(control_path, bank_path):
         new.to_csv(control_path, header=None, index = False)
 
 
-def convert_xCalibre_matrix_for_PCI(matrix_file, corresponding_control_file = False, id_length = 8):
+def convert_xCalibre_matrix_for_PCI(matrix_file, corresponding_control_file = False, id_length = 8, include_id = False):
     ret = []
     first_row = ""
     if corresponding_control_file:
@@ -330,7 +330,9 @@ def convert_xCalibre_matrix_for_PCI(matrix_file, corresponding_control_file = Fa
     lines = hfh.get_lines(matrix_file)
     for line in lines:
         ret_line = ""
-        answer_string = line[id_length:]
+        if include_id:
+            ret_line = line[:id_length]
+        answer_string = line[id_length-1:]
         for c in answer_string:
             ret_line += c+','
         ret_line = ret_line[:-3]
@@ -339,10 +341,11 @@ def convert_xCalibre_matrix_for_PCI(matrix_file, corresponding_control_file = Fa
     name = hfh.get_stem(matrix_file)+"__c.csv"
     hfh.write_lines_to_text(ret, name)
     translated_name = hfh.get_stem(matrix_file)+"_T_c.csv"
-    df = pd.read_csv(name, header = 0)
+    df = pd.read_csv(name, header = None)
+    df.to_csv("pickme.csv")
     df = df.T
     df.to_csv(translated_name, index = False)
-
+    return df.T
 
 def is_valid_data(file):
     #   id  responses
@@ -564,8 +567,10 @@ def create_key_df_from_csv(file_path):
         ret.append([form, test_id, subject, bank_id_number, bank_id])
     df = pd.DataFrame(ret)
     df.columns = ['form', 'test_id', 'subject', 'bank_id_number', 'bank_id']
-    name = hfh.create_name(hfh.get_stem(file_path),"LPCC_IRT/keys/L_files","csv",'_L')
-    df.to_csv(name, index=None)
+
+   # name = hfh.create_name("silly","LPCC_IRT/keys/L_files","csv",'_L')
+
+    #df.to_csv(name, index=None)
     return df
 
 
@@ -624,6 +629,38 @@ def set_standard_id_length_in_data_files(path_to_files,target_length, spaces_bet
            new_lines.append(set_standard_id_length_for_line(line, target_length))
             #name = hfh.create_name(file,hfh.get_parent_folder(file)+"/formatted_data")
         hfh.write_lines_to_text(new_lines, file)
+
+
+def clean_stats_csv(path, create_csv = True, get_df = False):
+    lines = hfh.get_lines(path)
+    #assumes report starts with Sequence
+    i = -1
+    cont = True
+    beginning = -1
+    ret_lines = []
+    while cont:
+        for line in lines:
+            i+=1
+            split_line = line.split(',')
+            if split_line[0] == 'Sequence':
+                cont = False
+                beginning = i
+            if beginning > -1:
+                if line == '\n':
+                    cont = False
+                else:
+                    ret_lines.append(line.split(','))
+    df = pd.DataFrame(ret_lines[1:])
+    df.columns = ret_lines[0][:-1]
+    df = df.drop(columns = '4 SD')
+    if create_csv:
+        new_path = hfh.get_parent_folder(path)
+        name = new_path + "/"+hfh.get_stem(path)[:-6]+".cleaned_stats"
+        df.to_csv(name)
+    if get_df:
+        return df
+
+
 
 #set_standard_id_length_in_data_files("PT_IRT/PT_processed_data", 8)
 #convert_xCalibre_matrix_for_PCI("PT_data/score_matrices/PT1_18_m.txt")

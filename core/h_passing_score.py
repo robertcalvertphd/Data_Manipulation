@@ -23,7 +23,7 @@ def get_difficulties_of_items(df_of_items, path_aggregate_data, column_index_of_
     sequence_list = ids_sequence.tolist()
     #ids_sequence = ids[column_index_of_item_ids].to_list()
     a = agg['Item ID'].isin(ids_sequence)
-    b = agg[a]['B mean']
+    b = agg[a]['b_mean']
 
     #c = agg['Item ID'].tolist()
     #d = a.tolist()
@@ -75,7 +75,7 @@ def evaluate_test_items(path_to_items, path_to_aggregate_data, passing_theta, Ka
     guess = guess*0
     #   consider modification but it seems that there is a better than odds chance on guessing (eliminate 1)
     predicted_correct = know + guess
-    #print (hfh.get_stem(path_to_items), predicted_correct/len(bs), diff[1], diff[2])
+    print (hfh.get_stem(path_to_items), predicted_correct/len(bs), diff[1], diff[2])
     return [hfh.get_stem(path_to_items), predicted_correct/len(bs), diff[1], diff[2]]
 
 def create_key_from_control_file(control_path, path_to_keys):

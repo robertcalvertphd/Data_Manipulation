@@ -1,8 +1,14 @@
 #   this file contains functions that modify files and retrieve information
+#from core.import_handler import os
 import os
-import pandas as pd
+#from core.import_handler import copyfile
 from shutil import copyfile
+import pandas as pd
 import numpy as np
+#from core.import_handler import pd
+
+
+
 
 def file_is_readable(file_path):
     try:
@@ -81,6 +87,8 @@ def get_all_file_names_in_folder(folder_path, extension = False, target_string =
         if can_be_empty:
             return ret
         return False
+
+
 def get_all_files(path_to_data, target_string = False, extension = False):
     #todo: verify that this works with many layers of folders
     folders = get_all_folders_in_folder(path_to_data)
@@ -287,9 +295,15 @@ def is_delimited(file, delimiter, minimum_columns = 4):
         return False
     return True
 
-def convert_xlsx_to_csv(file_path, destination_path):
+
+def convert_xlsx_to_csv(file_path, destination_path, get_df = False):
     read_file = pd.read_excel(file_path)
     read_file.to_csv(destination_path, index=None, header=True)
+    if get_df:
+        return read_file
+
 
 def get_df_from_xlsx(file_path):
     return pd.read_excel(file_path)
+
+
