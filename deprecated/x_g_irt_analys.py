@@ -6,7 +6,7 @@ import core.h_user_input as hu
 #   1)  check data file and control files. convert if necessary
 #   2)  match item_id with control file
 #           could be an item bank or a series of test forms (Karen data)
-#   3)  run Rasch models in xCalibre
+#   3)  run Rasch models in xCalibreOutput
 #   4)  item analysis
 #           aggregate reports
 #           recommendations

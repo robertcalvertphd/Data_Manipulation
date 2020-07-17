@@ -6,8 +6,23 @@ np = hfh.np
 #   todo: ensure that all helpers throw errors when invalid arguments are passed to them
 #   todo: institute a return True without error and a check for True
 
+def get_data_df(data_file, id_length = 8, spaces = 3):
+    lines = hfh.get_lines(data_file)
+    ret = []
+    for line in lines:
+        ret_line = []
+        id = line[:8]
+        ret_line.append(id)
+        response_sting = line[id_length+spaces:-2]
+        response_sting = response_sting.strip()
+        for character in response_sting:
+            ret_line.append(character)
+        ret.append(ret_line)
+    df = pd.DataFrame(ret)
+    return df
 
-def convert_iteman_format(file_name, destination_path ="", create_csv = True, pretest_cutoff = False):
+
+def convert_iteman_format(file_name, destination_path ="", create_csv = True, pretest_cutoff = False, all_operational = False):
     if file_name == "LCLE_IRT/data/AB Forms by Admin/LCLE2018ABForms/Jan2018AB/LCLEJan2018BTest.txt":
         print("target")
     #   old format is of style
@@ -51,6 +66,7 @@ def convert_iteman_format(file_name, destination_path ="", create_csv = True, pr
                         else: line = [str(i + 1), answer, str(n), '1', 'Y', 'M']
                         control.append(line)
                 else:
+                    if all_operational: inc = 'Y'
                     line = [str(i + 1), answer, str(n), '1', inc, 'M']
                     control.append(line)
 
@@ -131,12 +147,14 @@ def convert_default_data_to_iteman(file_name, processed_data_path, new_name = Fa
     hfh.write_lines_to_text(ret, path)
 
 
-def convert_first_line_answers_to_default_control_and_data(file_name):
+def convert_first_line_answers_to_default_control_and_data(file_name, comma_delimited = False, id_length = 8, id_spaces = 3):
     #todo: handle cutoff for not included
     lines = hfh.get_lines(file_name)
     correct = lines[0]
     new = []
     counter = 0
+    if comma_delimited:
+        correct = correct.replace(',','')
     for a in correct:
         counter +=1
         if not a == '\n':
@@ -147,8 +165,36 @@ def convert_first_line_answers_to_default_control_and_data(file_name):
     hfh.write_lines_to_text(new, name+"_c.csv")
     #   contains a random F at the end will test to see if it matters
     formatted = []
-    for line in lines[2:]:
-        formatted.append(line[:]) #no clue why : is here perhaps I will remove it.
+    if comma_delimited:
+        for line in lines[1:]:
+            split_line = line.split(',')
+            id = split_line[0]
+            new_id = ""
+            if len(id)<id_length:
+                short = id_length-len(id)
+                for i in range(short):
+                    new_id += "_"
+            new_id += id
+
+            response_string = line[len(id):-2].replace(',','') + '\n'
+            ret_line = new_id + "   " + response_string
+            formatted.append(ret_line)
+
+    else:
+        for line in lines[2:]:
+            # todo: could be problematic
+            id_end = line.find(',')
+            id = line[:id_end]
+            new_id = ""
+            characters_short = id_length - len(id)
+            for c in range(characters_short):
+                new_id += "_"
+            new_id += id
+            for i in range(id_spaces):
+                new_id += " "
+            new_line = new_id + line
+            formatted.append(new_line) #no clue why : is here perhaps I will remove it.
+
     hfh.write_lines_to_text(formatted, name + "_f.txt")
 
 
@@ -318,6 +364,7 @@ def merge_control_and_bank_info(control_path, bank_path):
 
 
 def convert_xCalibre_matrix_for_PCI(matrix_file, corresponding_control_file = False, id_length = 8, include_id = False):
+    #similar file in h_stats
     ret = []
     first_row = ""
     if corresponding_control_file:
@@ -332,7 +379,7 @@ def convert_xCalibre_matrix_for_PCI(matrix_file, corresponding_control_file = Fa
         ret_line = ""
         if include_id:
             ret_line = line[:id_length]
-        answer_string = line[id_length-1:]
+        answer_string = line[id_length:]
         for c in answer_string:
             ret_line += c+','
         ret_line = ret_line[:-3]

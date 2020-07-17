@@ -55,13 +55,16 @@ def purge_invalid_extensions(files, list_of_valid_extensions):
 
 
 def get_all_folders_in_folder(folder_path):
-    list = os.listdir(folder_path)
-    ret = []
-    for item in list:
-        if os.path.isdir(folder_path + '/'+item):
-            ret.append(folder_path + '/'+item)
-    return ret
-
+    if os.path.isdir(folder_path):
+        list = os.listdir(folder_path)
+        ret = []
+        for item in list:
+            if os.path.isdir(folder_path + '/'+item):
+                ret.append(folder_path + '/'+item)
+        return ret
+    else:
+        print("get all folders fed path that DNE.")
+        return False
 
 def get_all_file_names_in_folder(folder_path, extension = False, target_string = False, can_be_empty = True):
     ret = []
@@ -188,8 +191,8 @@ def get_lines(file_name):  # candidate for general helper file
             for line in f: lines.append(line)
         return lines
     except:
-        return False
         print("invalid file type call in get_lines")
+        return False
 
 
 def get_df(path_to_csv, header = None, index = None, dtype = object):
@@ -296,6 +299,84 @@ def is_delimited(file, delimiter, minimum_columns = 4):
     return True
 
 
+def find_month(file_name):
+    months = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER","OCTOBER","NOVEMBER","DECEMBER"]
+    ret = []
+    file_name = get_stem(file_name).upper()
+    for month in months:
+        full = file_name.find(month)
+        if full > -1:
+            ret.append(month)
+        mon = month[:3]
+        three = file_name.find(mon)
+        if len(ret) == 0 and three > -1:
+            ret.append(mon)
+    if len(ret) > 1:
+        return False
+    if len(ret) == 1:
+        return ret[0]
+    else:
+        return False
+
+def find_year(file_name):
+    #   check if month present
+    m = find_month(file_name)
+    mi = file_name.find(m)
+    if mi > 2:
+        #   check if month is preceded by two numbers
+        possible_year = file_name[mi-2:mi]
+        if possible_year.isdigit():
+            return possible_year
+    else:
+        print("no month present in file" + file_name)
+    #   returns the first two consecutive numbers
+    number_index = []
+    for i in range(len(file_name)):
+        if file_name[i].isdigit():
+            number_index.append(i)
+    if int(number_index[0]+1) == int(number_index[1]):
+        print("bad number finding")
+        return file_name[number_index[0]] + file_name[number_index[1]]
+
+    return False
+
+
+def pair_files(filesA, filesB, check = False, get_unhandled_items = False):
+    if get_unhandled_items and check:
+        print("can not simultaneously get unhandled and check that match")
+    ret = []
+    unhandled = []
+    for fa in filesA:
+        pe_mon = find_month(fa)
+        pe_year = find_year(fa)
+        handled = 0
+        for fb in filesB:
+            data_mon = find_month(fb)
+            data_year = find_year(fb)
+            if pe_mon == data_mon and pe_year == data_year:
+                ret.append([fa, fb])
+                handled = 1
+        if handled == 0:
+            unhandled.append(fa)
+    if len(filesA) == len(filesB):
+        if len(ret) == len(filesA):
+            return ret
+        else:
+            if not check:
+                print("unhandled items in process data")
+                if get_unhandled_items:
+                    return ret, unhandled
+                else:
+                    return ret
+            else:
+                return False
+    elif check:
+        print("length of files are unequal. Should not happen.")
+        return False
+    else:
+        return ret
+
+
 def convert_xlsx_to_csv(file_path, destination_path, get_df = False):
     read_file = pd.read_excel(file_path)
     read_file.to_csv(destination_path, index=None, header=True)
@@ -307,3 +388,41 @@ def get_df_from_xlsx(file_path):
     return pd.read_excel(file_path)
 
 
+def get_stats_df(stats_path, bank = None, remove_na = True):
+    ret = []
+    lines = get_lines(stats_path)
+    header_index = get_index_of_line_that_starts_with_word_based_on_delimiter(lines,'Sequence')
+    blank_index = get_next_blank_line_after_index_from_lines(lines, header_index)
+    data = lines[header_index+1:blank_index+header_index]
+    for line in data:
+        ret.append(line.split(','))
+    df = pd.DataFrame(ret)
+
+    header = lines[header_index].split(',')
+    df.columns = header[:-1]
+    #   note the last entry has \n
+    if remove_na:
+        df = df.apply(pd.to_numeric, errors='coerce')
+        #df = df.dropna['b'](axis=1, how='any')
+        df = df[df['b'].notna()]
+    if bank is not None:
+        df['Domain'] = bank['Domain']
+    return df
+
+
+def get_matched_files(path = None, possible_X = ['R','2'], possible_Y = ['TIF','IIF','STATS'], only_return_complete_sets = True):
+    #   this is intended to work with files following TESYRMON_X_Y
+    if os.path.isdir(path):
+        files = get_all_files(path)
+
+        for file in files:
+            name = file[file.rfind('/'):file.rfind('.')]
+            year = find_year(file)
+            mon = find_month(file)
+            x_i = name.find('_')
+            y_i = name.rfind('_')
+            x = file[x_i:y_i]
+            y = file[y_i:]
+    else:
+        print("invalid path")
+        return False

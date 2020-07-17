@@ -10,8 +10,6 @@ from core.h_file_handling import os
 from numpy import unique
 
 import pandas as pd
-
-
 #   this file contains helper functions for extracting meaningful data from reports.
 #   the extracted data should export as a .txt file and its target is the test specialist in
 #   charge of the test. Functions here should quickly extract information to answer questions
@@ -139,6 +137,7 @@ def get_descriptives(series):
     except:
         return 0, 0, 0, 0
 
+
 def get_flag_count(series):
     flags = ['La', 'Lb', 'K', 'Ha', 'Hb']
     ret = [0, 0, 0, 0, 0]
@@ -207,10 +206,6 @@ def create_general_report_table(aggregate_cs_path, name, destination_path):
     irt.to_csv(destination_path + "/" + name +"_high_performers_for_irt_.csv")
 
 
-# create_general_report_table("LCLE_IRT/aggregate__cs.csv")
-
-# create_reports("PT_data/pt1_17")
-
 def get_suggestions(SR, TR, B, flags):
     #   flags = ['La', 'Lb', 'K', 'Ha', 'Hb'] # todo: sloppy
 
@@ -246,13 +241,17 @@ def get_theta_for_item(path_to_scores, item_id):
     return theta
 
 
-def get_theta_from_passing_percent_correct(percent_to_pass, path_to_tif):
-    df = pd.read_csv(path_to_tif)
+def get_theta_from_passing_percent_correct(percent_to_pass, path_to_tif, tif_df = None, return_values = True):
+    if tif_df is None:
+        df = pd.read_csv(path_to_tif)
+    else:
+        df=tif_df
     SCORE_COL = "TRF"
     THETA_COL = "Theta"
     a = df.iloc[(df[SCORE_COL] - percent_to_pass).abs().argsort()[:1]]
     a = a[THETA_COL].values[0].astype(float)
-    return get_stem(path_to_tif), int(a * 100) / 100
+    if return_values:
+        return get_stem(path_to_tif), int(a * 100) / 100
 
 
 def get_theta_from_passing_score(passing_score, path_to_tif):
@@ -262,6 +261,7 @@ def get_theta_from_passing_score(passing_score, path_to_tif):
     a = df.iloc[(df[SCORE_COL] - passing_score).abs().argsort()[:1]]
     a = a[THETA_COL].values[0].astype(float)
     return get_stem(path_to_tif), int(a * 100) / 100
+
 
 def get_passing_thetas_by_percentage(report_title, path_to_TIFs, aggregate_report_path, score = .7):
     passing_thetas = []
@@ -305,13 +305,11 @@ def get_passing_thetas(report_title):
     df.to_csv(report_title + "_passing_thetas.csv", index=False, header=["FORM", "THETA"])
 
 
-#get_passing_thetas("LCLE")
-# todo: remove items that have no item_id (old items) currently I just manually deleted them.
-
 def empty_reports_folder(report_path):
     files = get_all_file_names_in_folder(report_path)
     for file in files:
         os.remove(file)
+
 
 def create_pro_exam_report(complete_df):
     print("hello")

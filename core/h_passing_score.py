@@ -23,8 +23,10 @@ def get_difficulties_of_items(df_of_items, path_aggregate_data, column_index_of_
     sequence_list = ids_sequence.tolist()
     #ids_sequence = ids[column_index_of_item_ids].to_list()
     a = agg['Item ID'].isin(ids_sequence)
-    b = agg[a]['b_mean']
-
+    try:
+        b = agg[a]['b_mean']
+    except:
+        b = agg[a]['B mean']
     #c = agg['Item ID'].tolist()
     #d = a.tolist()
 
@@ -78,6 +80,7 @@ def evaluate_test_items(path_to_items, path_to_aggregate_data, passing_theta, Ka
     print (hfh.get_stem(path_to_items), predicted_correct/len(bs), diff[1], diff[2])
     return [hfh.get_stem(path_to_items), predicted_correct/len(bs), diff[1], diff[2]]
 
+
 def create_key_from_control_file(control_path, path_to_keys):
     #assumes control does not have header
     df = hfh.get_df(control_path)
@@ -92,6 +95,7 @@ def create_key_from_control_file(control_path, path_to_keys):
     name = path_to_keys +"/"+ hfh.get_stem(control_path)+"_KEY.csv"
     hfh.write_lines_to_text(ret,name)
 
+
 def create_key_from_L_file(L_file, path_to_keys):
     lines = hfh.get_lines(L_file)[1:]
     counter = 0
@@ -103,12 +107,13 @@ def create_key_from_L_file(L_file, path_to_keys):
     file_path = path_to_keys + "/" + hfh.get_stem(L_file)[:-2] + "_KEY.txt"
     hfh.write_lines_to_text(ret, file_path)
 
-def evaluate_past_tests(report_path, test_path, passing_theta, key_strings = ['Key','KEY','Test'], Karen_data = False, Amy_data = False, ):
+
+def evaluate_past_tests(report_path, key_path, passing_theta, key_strings = ['Key','KEY','Test'], Karen_data = False, Amy_data = False, ):
     #LMLE_report = "LMLE_IRT/reports/_LMLE__complete_.csv"
 
     keys = []
     for k in key_strings:
-        files = hfh.get_all_file_names_in_folder(test_path, target_string=k)
+        files = hfh.get_all_file_names_in_folder(key_path, target_string=k)
         for f in files:
             keys.append(f)
 
@@ -146,6 +151,9 @@ def make_key_of_n_top_B_from_complete(complete_file, key_path, n):
     ret_df.to_csv(key_path+"/"+"topDiff_KEY.csv", index = False)
     print("hello")
 
+
+def get_theta_from_passing(passing_percentage, tif_df):
+    test = tif_df.sort('')
 #report_path = "LMLE_IRT/reports/"
 #test_path = "LMLE_IRT/keys/"
 #evaluate_past_tests(report_path, test_path,1)

@@ -5,6 +5,8 @@ import core.h_user_input as u
 pd = hfh.pd
 os = hfh.os
 
+#   todo: remove pairing logic from here and depend on hfh
+
 
 def make_folders(name, parent_folder):
     try:

@@ -1,5 +1,10 @@
-from core.h_file_handling import pd
 import core.h_file_handling as hfh
+import core.h_assumptions as ha
+import core.h_reports as hr
+import core.h_format_manipulators
+
+pd = hfh.pd
+
 
 #   This file is intended to generalize output of dataframes into csvs that may easily be formatted to APA in excel
 
@@ -9,6 +14,7 @@ def create_table(df, df_columns, column_names, column_spanners, title_name, note
 
 
 class Table:
+
     def __init__(self, title, columnInfo, rows, notes):
         self.create_csv(title, columnInfo, rows, notes)
 
@@ -25,6 +31,7 @@ class Table:
         hfh.write_lines_to_text(lines,title+".csv")
 
 class ColumnInfo:
+
     def __init__(self, column_span_names, column_spans, column_names):
         self.column_spans = column_spans
         self.column_span_names = column_span_names
@@ -57,3 +64,27 @@ class ColumnInfo:
             columns_line+=col+','
         ret=[column_span_line,columns_line]
         return ret
+
+def get_count_summary(df, group_var, target_var, target_var_full_name = None, group_var_full_name = None):
+    #todo: implement table logic for APA
+    d = df.groupby([group_var, target_var]).size().unstack(fill_value=0)
+    d[group_var + "_count"] = d.sum(axis=1)
+    return d
+
+
+def create_item_level_analysis(stats_R_path, stats_2_path, tif_path, matrix_path, bank_path, passing_proportion):
+    bank = hfh.get_df_from_xlsx(bank_path)
+    stats_R_df = hfh.get_stats_df(stats_R_path, bank)
+    stats_2_df = hfh.get_stats_df(stats_2_path, bank)
+    tif_df = hfh.get_df(tif_path, header = 0)
+    matrix_df = core.h_format_manipulators.convert_xCalibre_matrix_for_PCI(matrix_path)
+    a = ha.get_residuals_by_domain(matrix_df, stats_R_df, tif_df)
+    b = ha.evaluate_in_fit_out_fit(stats_R_df)
+    c = ha.evaluate_item_discriminatsion(stats_2_df)
+    d = hr.get_count_summary(b, 'Domain', 'IN_DEV_EVAL')
+    e = hr.get_count_summary(b, 'Domain', 'OUT_DEV_EVAL')
+    f = hr.get_count_summary(b, 'Domain', 'B_EVAL')
+    g = hr.get_count_summary(c, 'Domain', 'A_DEV_EVAL')
+    h = ha.get_residuals_by_difficulty(matrix_df, stats_R_df, tif_df, a[1])
+    j = ha.evaluate_max_info(stats_R_df, tif_df, passing_proportion)
+

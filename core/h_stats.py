@@ -1,12 +1,40 @@
+import core.h_file_handling as hfh
+import core.h_format_manipulators as h
 from statsmodels.formula.api import ols
 from statsmodels.stats.multicomp import (pairwise_tukeyhsd)
 import statsmodels.api as sm
 from scipy.stats import chi2
 import pandas as pd
+import os
 from math import pow, e
 from sklearn.decomposition import PCA as p
 from sklearn.decomposition import FactorAnalysis
 import factor_analyzer as f
+
+
+
+def grade_responses(data_file, control_file):
+    # todo: this has been back burnered so assumption item assessment can be finished.
+    # this assumes that data has been processed
+    a = os.path.isfile(data_file)
+    b = os.path.isfile(control_file)
+    data_df = h.get_data_df(data_file)
+    control_df = hfh.get_df(control_file)
+    ret_df = data_df
+    answers = control_df.iloc[:,1]
+    ids = data_df.iloc[:,0]
+    data_df = data_df.drop(columns = 0)
+    data_df.index = data_df.index+1
+    for col in range(data_df.shape[0]-1):
+        for row in range(data_df.shape[1]):
+            individuals_answers = data_df.loc[row+1]
+            #   data_df[data_df.loc[row+1]==individuals_answers,'q'+str(row+1)] = 1
+            #   b = control_df.iloc[row,1]
+            print(a,b)
+            #ret_df.loc[row][data_df[col] == control_df.iloc[row,1], "q"+str(col)] = 1
+    print("hello")
+
+
 
 def get_group_stats(df):
     group_var = "GROUP"
@@ -47,6 +75,7 @@ def get_group_df(df, target_index = None, target_name = None, group_index = None
     else:
         print("error: did not identify target and group in get_group_df")
         return False
+        return False
 
 
 def ANOVA(df):
@@ -85,16 +114,108 @@ def run_factor_analysis(df):
     '''
 
     fa = f.FactorAnalyzer(rotation=None)
+    fa.use_smc = False
     a = fa.fit(df)
     b = fa.get_eigenvalues()
     return b[0]
+
+def set_person_theta(matrix_df = None, tif_df = None):
+    if matrix_df is None or tif_df is None:
+        print("get_theta must be fed a matrix_df and tif_df")
+        return False
+    score = matrix_df.sum(axis = 1)
+    n = matrix_df.shape[1]
+    averages = score/n
+    #inefficient I would like to get apply working
+    ret = []
+    for a in averages:
+        x = tif_df.iloc[(tif_df['TRF'].astype(float) - a).abs().argsort()[:1]]['Theta'].values[0]
+        x = float(x)
+        ret.append(x)
+    s = pd.Series(ret)
+    matrix_df['PERSON_THETA'] = s
+    return matrix_df
+
+
+def get_theta_from_percent_correct(percent, path_to_tif = None, tif_df = None, return_stem = True,):
+    if tif_df is None:
+        df = pd.read_csv(path_to_tif)
+    else:
+        df=tif_df
+    SCORE_COL = "TRF"
+    THETA_COL = "Theta"
+    a = df.iloc[(df[SCORE_COL].astype(float) - percent).abs().argsort()[:1]]
+    a = a[THETA_COL].values[0].astype(float)
+    if return_stem:
+        return hfh.get_stem(path_to_tif), int(a * 100) / 100
+    return int(a * 100) / 100
+
+
+def process_response_string_for_classical_upload(data_file, control_file):
+    data_df = hfh.get_df(data_file)
+    control_df = hfh.get_df(control_file)
+
+
+
+def get_percent_from_theta(theta, path_to_tif = None, tif_df = None, return_values = True, return_df = False):
+    if path_to_tif is None and tif_df is None:
+        print("get_percent_from_theta was not passed a tif path or df.")
+    else:
+        if tif_df is None:
+            df = pd.read_csv(path_to_tif)
+        else:
+            df=tif_df
+        SCORE_COL = "TRF"
+        THETA_COL = "Theta"
+        a = df.iloc[(df[THETA_COL].astype(float) - theta).abs().argsort()[:1]]
+        a = a[SCORE_COL].values[0]
+        if return_values:
+            return hfh.get_stem(path_to_tif), int(a * 100) / 100
+
 def get_p_for_item_given_theta_and_b(theta, B):
+    theta = float(theta)
+    B = float(B)
     y = theta - B
     top = pow(e, y)
     bottom = 1 + pow(e, theta-B)
     return top/bottom
 
 
+def get_residuals(matrix_df = None, stats_df = None, tif_df = None):
+    if matrix_df is None or stats_df is None or tif_df is None:
+        print("get residuals requires matrix_df, stats_df, and tif_df.")
+    difficulties = stats_df['b'].astype(float)
+
+    thetas = matrix_df['PERSON_THETA'].astype(float)
+
+    ret = []
+    ret_resid = []
+    ret_std_resid = []
+    for i in difficulties.index:
+        expecteds = []
+        actuals = []
+        residuals = []
+        standardized_residuals = []
+
+        b = difficulties[i]
+        for j in thetas.index:
+            theta = thetas[j]
+            expected = get_p_for_item_given_theta_and_b(theta,b)
+            expecteds.append(expected)
+            actual = matrix_df.iloc[j,i]
+            actuals.append(actual)
+            residual = actual - expected
+            residuals.append(residual)
+            std_residual = residual/(expected*(1-expected))
+            standardized_residuals.append(std_residual)
+        ret_resid.append(residuals)
+        ret_std_resid.append(standardized_residuals)
+        df = hfh.pd.DataFrame([expecteds,actuals,residuals,standardized_residuals]).T
+        #   note: df is just for validation it is not in itself useful.
+        ret.append([df])
+    resid_df = hfh.pd.DataFrame(ret_resid)
+    std_resid_df = hfh.pd.DataFrame(ret_std_resid)
+    return [ret,resid_df,std_resid_df]
 def resid_chisq(o, expected):
     a = 0
     if expected > 0:

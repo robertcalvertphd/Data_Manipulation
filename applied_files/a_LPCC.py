@@ -99,11 +99,11 @@ xCalibre_path = "LPCC_IRT/xCalibreOutput"
 reports_path = "LPCC_IRT/reports"
 key_path = "LPCC_IRT/keys"
 def make_stuff():
-#   process_old_data("LPCC_IRT/data/16_17_data", processed_data_path)
-#    process_amy_data("LPCC_IRT/data/AB_test", processed_data_path)
-#   process_amy_data("LPCC_IRT/data/standard", processed_data_path)
-#   create_amy_reports(reports_path, xCalibre_path, key_path)
-#   p.evaluate_past_tests(reports_path, key_path, Amy_data=True, passing_theta=1)
+    #process_old_data("LPCC_IRT/data/16_17_data", processed_data_path)
+    #process_amy_data("LPCC_IRT/data/AB_test", processed_data_path)
+    #process_amy_data("LPCC_IRT/data/standard", processed_data_path)
+    #create_amy_reports(reports_path, xCalibre_path, key_path)
+    p.evaluate_past_tests(reports_path, key_path, Amy_data=True, passing_theta=1)
 
     control_files = hfh.get_all_file_names_in_folder(processed_data_path, target_string='_c.csv')
     for file in control_files:

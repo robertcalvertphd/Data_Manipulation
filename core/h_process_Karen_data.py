@@ -7,7 +7,7 @@ from core.h_Rasch_report_analysis import create_all
 #   test files follow the form number. Subject ID e.g 1. Law 102
 #   admin files follow the standard iteman format row 2 = key, row row 3 = response options, row 4 = include
 
-def procees_karen_data(data_path, processed_data_path, report_path, test_bank_string, data_string, report_name, xCalibre_path):
+def procees_karen_data(data_path, processed_data_path, test_bank_string, data_string):
 
     #1  gather all test files
     test_bank_files = hfh.get_all_files(data_path, target_string=test_bank_string)
@@ -28,7 +28,6 @@ def procees_karen_data(data_path, processed_data_path, report_path, test_bank_st
 
     #5  process xCalibreOutput files and create Stats_c files
     #6  create aggregate reports from _Stats_c files
-
 
 
 def create_L_from_test(file_path, destination_path = "", create_csv = True):
